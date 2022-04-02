@@ -3,16 +3,7 @@
 
 #include "uring_data.hpp"
 
-enum class IO_OP_TYPE {
-  OPEN_AT,
-  READ,
-  WRITE,
-  RECV,
-  SEND,
-  ACCEPT,
-  CLOSE,
-  SLEEP
-};
+#include <variant>
 
 struct io_uring_op_openat_t {
   int m_dir;
@@ -152,30 +143,9 @@ struct io_uring_op_close_t {
   }
 };
 
-union io_operation;
-struct io_operation_next {
-  IO_OP_TYPE m_type;
-  io_operation *m_next;
-};
-
-template <typename ITEM>
-struct io_operation_item {
-  io_operation_next m_next_op;
-  ITEM m_item;
-};
-union io_operation {
-  IO_OP_TYPE m_type;
-  io_operation_next m_next_op;
-  io_operation_item<io_uring_op_sleep_t> m_sleep;
-  io_operation_item<io_uring_op_openat_t> m_openat;
-  io_operation_item<io_uring_op_read_t> m_read;
-  io_operation_item<io_uring_op_write_t> m_write;
-  io_operation_item<io_uring_op_recv_t> m_recv;
-  io_operation_item<io_uring_op_accept_t> m_accept;
-  io_operation_item<io_uring_op_send_t> m_send;
-  io_operation_item<io_uring_op_close_t> m_close;
-
-  io_operation *m_next_chunk = nullptr;
-};
+using io_operation =
+    std::variant<io_uring_op_sleep_t, io_uring_op_openat_t, io_uring_op_read_t,
+                 io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
+                 io_uring_op_send_t, io_uring_op_close_t>;
 
 #endif

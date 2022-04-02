@@ -133,7 +133,7 @@ public:
 
     m_io_queues.resize(32);
     for (size_t i = 0; i < 32; ++i) {
-      m_io_queues[i] = new io_op_pipeline;
+      m_io_queues[i] = new io_op_pipeline(128);
     }
 
     m_uring_data_allocators.resize(32);
@@ -143,7 +143,7 @@ public:
   }
 
   template <typename Operation>
-  auto submit_io(Operation &operation) -> awaiter {
+  auto submit_io(Operation &&operation) -> awaiter {
 
     if (m_thread_id == 0) {
       m_thread_id =
@@ -151,7 +151,7 @@ public:
     }
 
     awaiter future(this);
-    operation.m_item.m_data = future.get_data();
+    operation.m_data = future.get_data();
 
     m_io_queues[m_thread_id - 1]->enqueue(operation);
 
@@ -181,56 +181,42 @@ public:
 
   auto openat(const int &dfd, const char *const &filename, const int &flags,
               const mode_t &mode) -> awaiter {
-    io_operation_item<io_uring_op_openat_t> operation{
-        IO_OP_TYPE::OPEN_AT, nullptr, dfd, filename, flags, mode, nullptr};
-    return submit_io(operation);
+    return submit_io(io_uring_op_openat_t{dfd, filename, flags, mode, nullptr});
   }
 
   auto read(const int &fd, void *const &buffer, const unsigned &bytes,
             const off_t &offset) -> awaiter {
-    io_operation_item<io_uring_op_read_t> operation{
-        IO_OP_TYPE::READ, nullptr, fd, buffer, bytes, offset, nullptr};
-    return submit_io(operation);
+    return submit_io(io_uring_op_read_t{fd, buffer, bytes, offset, nullptr});
   }
 
   auto write(const int &fd, void *const &buffer, const unsigned &bytes,
              const off_t &offset) -> awaiter {
-    io_operation_item<io_uring_op_write_t> operation{
-        IO_OP_TYPE::WRITE, nullptr, fd, buffer, bytes, offset, nullptr};
-    return submit_io(operation);
+    return submit_io(io_uring_op_write_t{fd, buffer, bytes, offset, nullptr});
   }
 
   auto recv(const int &m_fd, void *const &m_buffer, const size_t &m_length,
             const int &m_flags) -> awaiter {
-    io_operation_item<io_uring_op_recv_t> operation{
-        IO_OP_TYPE::RECV, nullptr, m_fd, m_buffer, m_length, m_flags, nullptr};
-    return submit_io(operation);
+    return submit_io(
+        io_uring_op_recv_t{m_fd, m_buffer, m_length, m_flags, nullptr});
   }
 
   auto accept(const int &fd, sockaddr *const &client_info,
               socklen_t *const &socklen, const int &flags) -> awaiter {
-    io_operation_item<io_uring_op_accept_t> operation{
-        IO_OP_TYPE::ACCEPT, nullptr, fd, client_info, socklen, flags, nullptr};
-    return submit_io(operation);
+    return submit_io(
+        io_uring_op_accept_t{fd, client_info, socklen, flags, nullptr});
   }
 
   auto send(const int &fd, void *const &buffer, const size_t &length,
             const int &flags) -> awaiter {
-    io_operation_item<io_uring_op_send_t> operation{
-        IO_OP_TYPE::SEND, nullptr, fd, buffer, length, flags, nullptr};
-    return submit_io(operation);
+    return submit_io(io_uring_op_send_t{fd, buffer, length, flags, nullptr});
   }
 
   auto close(const int &fd) -> awaiter {
-    io_operation_item<io_uring_op_close_t> operation{IO_OP_TYPE::CLOSE, nullptr,
-                                                     fd, nullptr};
-    return submit_io(operation);
+    return submit_io(io_uring_op_close_t{fd, nullptr});
   }
 
   auto sleep(__kernel_timespec *const &t) -> awaiter {
-    io_operation_item<io_uring_op_sleep_t> operation{IO_OP_TYPE::SLEEP, nullptr,
-                                                     t, nullptr};
-    return submit_io(operation);
+    return submit_io(io_uring_op_sleep_t{t, nullptr});
   }
 };
 

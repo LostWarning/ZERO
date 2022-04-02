@@ -4,7 +4,6 @@
 #include "circular_array.hpp"
 
 #include <atomic>
-#include <iostream>
 
 template <typename T>
 class work_stealing_queue {
@@ -29,19 +28,30 @@ public:
     return back == front;
   }
 
+  void resize(circular_array<T> *data, size_t back, size_t front) {
+    circular_array<T> *new_data = data->resize(back, front);
+    delete m_old.load(std::memory_order_relaxed);
+
+    m_old.store(data, std::memory_order_relaxed);
+
+    m_data.store(new_data, std::memory_order_relaxed);
+  }
+
   void enqueue(const T &item) {
     size_t back             = m_back.load(std::memory_order_relaxed);
     size_t front            = m_front.load(std::memory_order_acquire);
     circular_array<T> *data = m_data.load(std::memory_order_relaxed);
 
-    if (data->size() - 1 < (back - front)) {
-      circular_array<T> *new_data = data->resize(back, front);
-
-      delete m_old.load(std::memory_order_relaxed);
-
-      m_old.store(data, std::memory_order_relaxed);
-
-      m_data.store(new_data, std::memory_order_relaxed);
+    if (data->size() - 1 < static_cast<size_t>(back - front)) {
+      if (back < front) {
+        size_t a  = 0;
+        auto size = (back + ((a - 1) - front)) + 1;
+        if (data->size() - 1 < size) {
+          resize(data, back, front);
+        }
+      } else {
+        resize(data, back, front);
+      }
     }
 
     data->push(back, item);
@@ -49,26 +59,25 @@ public:
   }
 
   bool dequeue(T &item) {
-    size_t back             = m_back.load(std::memory_order_relaxed) - 1;
+    size_t back             = m_back.load(std::memory_order_relaxed);
     circular_array<T> *data = m_data.load(std::memory_order_relaxed);
-    m_back.store(back, std::memory_order_relaxed);
-    size_t front = m_front.load(std::memory_order_seq_cst);
+    size_t front            = m_front.load(std::memory_order_relaxed);
 
-    bool status = false;
+    if (front == back) {
+      return false;
+    }
+    m_back.store(--back, std::memory_order_seq_cst);
 
-    if (front <= back) {
-      item   = data->pop(back);
-      status = true;
-      if (front == back) {
-        if (!m_front.compare_exchange_strong(front, front + 1,
-                                             std::memory_order_seq_cst,
-                                             std::memory_order_relaxed)) {
-          status = false;
-        }
-        m_back.store(back + 1, std::memory_order_relaxed);
-      }
-    } else {
+    bool status = true;
+
+    item = data->pop(back);
+    if (front == back) {
       m_back.store(back + 1, std::memory_order_relaxed);
+      if (!m_front.compare_exchange_strong(front, front + 1,
+                                           std::memory_order_seq_cst,
+                                           std::memory_order_relaxed)) {
+        status = false;
+      }
     }
 
     return status;
@@ -76,22 +85,17 @@ public:
 
   bool steal(T &item) {
 
-    size_t front = m_front.load(std::memory_order_acquire);
-    size_t back  = m_back.load(std::memory_order_seq_cst);
+    size_t back  = m_back.load(std::memory_order_relaxed);
+    size_t front = m_front.load(std::memory_order_relaxed);
 
-    if (front < back) {
-      circular_array<T> *data = m_data.load(std::memory_order_consume);
-      item                    = data->pop(front);
-      if (!m_front.compare_exchange_strong(front, front + 1,
-                                           std::memory_order_seq_cst,
-                                           std::memory_order_relaxed)) {
-        return false;
-      }
-    } else {
+    if (back == front || back + 1 == front) {
       return false;
     }
 
-    return true;
+    circular_array<T> *data = m_data.load(std::memory_order_consume);
+    item                    = data->pop(front);
+    return m_front.compare_exchange_strong(
+        front, front + 1, std::memory_order_seq_cst, std::memory_order_relaxed);
   }
 };
 

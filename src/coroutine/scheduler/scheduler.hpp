@@ -1,7 +1,6 @@
 #ifndef __CORO_SCHEDULER_CORO_SCHEDULER_HPP__
 #define __CORO_SCHEDULER_CORO_SCHEDULER_HPP__
 
-#include "queue/queue.hpp"
 #include "queue/work_stealing_queue.hpp"
 
 #include <atomic>
@@ -59,12 +58,11 @@ class scheduler {
 
   std::vector<thread_context *> m_thread_cxts;
 
-  lock_free_stack<std::coroutine_handle<>> m_global_queue;
-
   std::mutex m_task_mutex;
   std::condition_variable m_task_cv;
 
   std::mutex m_spawn_thread_mutex;
+  std::mutex m_global_task_queue_mutex;
 
   bool m_stop_requested = false;
 

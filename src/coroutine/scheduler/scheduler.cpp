@@ -14,7 +14,7 @@ scheduler::scheduler() {
   m_id = ++m_coro_scheduler_count;
   m_thread_cxts.reserve(128);
   thread_context *io_cxt = new thread_context;
-  io_cxt->m_tasks = new work_stealing_queue<std::coroutine_handle<>>(128);
+  io_cxt->m_tasks        = new work_stealing_queue<std::coroutine_handle<>>(64);
   m_thread_cxts.push_back(io_cxt);
   spawn_workers(std::thread::hardware_concurrency());
 }
@@ -46,12 +46,13 @@ bool scheduler::steal_task(std::coroutine_handle<> &handle) noexcept {
     } while (i != m_thread_id);
   } while (c);
 
-  return m_global_queue.dequeue(handle);
+  return false;
 }
 
 void scheduler::schedule(const std::coroutine_handle<> &handle) noexcept {
   if (m_coro_scheduler_id != m_id || m_thread_id == 0) {
-    m_global_queue.enqueue(handle);
+    std::unique_lock lk(m_global_task_queue_mutex);
+    m_thread_cxts[m_thread_id]->m_tasks->enqueue(handle);
   } else {
     m_thread_cxts[m_thread_id]->m_tasks->enqueue(handle);
   }
@@ -122,7 +123,7 @@ void scheduler::spawn_workers(const unsigned int &count) {
 void scheduler::init_thread() {
   thread_context *cxt           = new thread_context;
   cxt->m_thread_status.m_status = thread_status::STATUS::READY;
-  cxt->m_tasks = new work_stealing_queue<std::coroutine_handle<>>(128);
+  cxt->m_tasks           = new work_stealing_queue<std::coroutine_handle<>>(64);
   cxt->m_waiting_channel = awaiter().handle();
   m_thread_cxts.push_back(cxt);
 }

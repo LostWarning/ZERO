@@ -1,7 +1,6 @@
 #ifndef __IO_IO_SERVICE_HPP__
 #define __IO_IO_SERVICE_HPP__
 
-#include "queue/queue.hpp"
 #include "uring_data.hpp"
 
 #include "io_pipeline.hpp"

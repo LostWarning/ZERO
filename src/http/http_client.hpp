@@ -4,7 +4,6 @@
 #include "coroutine/task.hpp"
 #include "http_request.hpp"
 #include "io/io_service.hpp"
-#include "queue/queue.hpp"
 
 #include <coroutine>
 

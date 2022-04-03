@@ -36,7 +36,6 @@ public:
   }
 
   void allocate_block() {
-    std::cerr << "Pool block Allocator\n";
     if (m_block_allocating.exchange(true) == false) {
       chunk *new_block = new chunk[block_size];
       m_allocated_blocks.push_back(new_block);

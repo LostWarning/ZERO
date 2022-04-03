@@ -46,6 +46,7 @@ public:
     while (m_io_work_queue.dequeue(op)) {
       std::visit([&](auto &&item) { status = item.run(uring); }, op);
       if (!status) {
+        std::cerr << "Queue Full\n";
         m_overflow_work     = op;
         m_has_overflow_work = true;
         return count;

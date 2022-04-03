@@ -69,7 +69,7 @@ public:
     };
 
     while (!is_queues_empty() &&
-           !m_io_sq_running.exchange(true, std::memory_order_relaxed)) {
+           !m_io_sq_running.exchange(true, std::memory_order_seq_cst)) {
 
       while (!is_queues_empty()) {
         for (auto &q : m_io_queues) {

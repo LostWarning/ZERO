@@ -20,7 +20,10 @@ public:
     m_data.store(new circular_array<T>(capacity), std::memory_order_relaxed);
   }
 
-  ~io_work_queue() { delete m_data.load(std::memory_order_relaxed); }
+  ~io_work_queue() {
+    delete m_data.load(std::memory_order_relaxed);
+    delete m_old.load(std::memory_order_relaxed);
+  }
 
   bool empty() const noexcept {
     size_t back  = m_back.load(std::memory_order_relaxed);
@@ -33,7 +36,7 @@ public:
     size_t front            = m_front.load(std::memory_order_acquire);
     circular_array<T> *data = m_data.load(std::memory_order_relaxed);
 
-    if (data->size() - 2 < static_cast<size_t>(back - (front - 1))) {
+    if (data->size() - 1 < static_cast<size_t>(back - front)) {
       if (back < front) {
         size_t a  = 0;
         auto size = (back + ((a - 1) - front)) + 1;
@@ -45,7 +48,7 @@ public:
       }
     }
 
-    data->push(back, item);
+    data->push(back, std::forward<T>(item));
     m_back.store(back + 1, std::memory_order_release);
   }
 
@@ -60,12 +63,13 @@ public:
 
     circular_array<T> *data = m_data.load(std::memory_order_consume);
     item                    = data->pop(front);
-    m_front++;
+    m_front.store(m_front + 1, std::memory_order_seq_cst);
     return true;
   }
 
 protected:
   void resize(circular_array<T> *data, size_t back, size_t front) {
+    std::cerr << "iowq Resize" << std::endl;
     circular_array<T> *new_data = data->resize(back, front);
     delete m_old.load(std::memory_order_relaxed);
 

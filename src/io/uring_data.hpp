@@ -16,7 +16,7 @@ struct uring_data {
   std::atomic_bool m_handle_ctl{false};
 };
 
-using uring_allocator = pool_allocator<uring_data, 102>;
+using uring_allocator = pool_allocator<uring_data, 128>;
 
 class uring_awaiter {
   uring_data *m_data;
@@ -58,6 +58,7 @@ public:
   }
 
   ~uring_awaiter() {
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     if (m_allocator != nullptr) {
       m_allocator->deallocate(m_data);
     }

@@ -4,7 +4,6 @@
 #include "circular_array.hpp"
 
 #include <atomic>
-#include <iostream>
 
 template <typename T>
 class work_stealing_queue {
@@ -36,7 +35,6 @@ public:
 
     if (data->size() - 1 < static_cast<size_t>(back - front)) {
       if (front - 1 != back) {
-        std::cerr << front << " - " << back << std::endl;
         if (back < (front - 1)) {
           size_t a  = 0;
           auto size = (back + ((a - 1) - front)) + 1;

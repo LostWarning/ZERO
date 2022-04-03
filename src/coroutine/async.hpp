@@ -7,6 +7,44 @@
 #include <atomic>
 #include <coroutine>
 
+template <typename Promise, typename Return = void>
+struct async_awaiter {
+  Promise *m_promise;
+  bool await_ready() const noexcept {
+    return m_promise->m_handle_ctl.load(std::memory_order_acquire);
+  }
+
+  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
+      -> std::coroutine_handle<> {
+    m_promise->m_continuation = handle;
+    if (m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
+      return handle;
+    }
+    return m_promise->m_scheduler->get_next_coroutine();
+  }
+
+  auto await_resume() const noexcept -> Return & { return m_promise->m_value; }
+};
+
+template <typename Promise>
+struct async_awaiter<Promise, void> {
+  Promise *m_promise;
+  bool await_ready() const noexcept {
+    return m_promise->m_handle_ctl.load(std::memory_order_acquire);
+  }
+
+  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
+      -> std::coroutine_handle<> {
+    m_promise->m_continuation = handle;
+    if (m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
+      return handle;
+    }
+    return m_promise->m_scheduler->get_next_coroutine();
+  }
+
+  void await_resume() const noexcept {}
+};
+
 struct async_final_suspend {
   std::coroutine_handle<> &m_continuation;
   scheduler *m_scheduler;
@@ -54,22 +92,6 @@ struct async {
     void unhandled_exception() {}
 
     async get_return_object() { return async(this); }
-
-    get_scheduler &await_transform(get_scheduler &s) {
-      s.m_scheduler = m_scheduler;
-      return s;
-    }
-
-    get_scheduler &&await_transform(get_scheduler &&s) {
-      s.m_scheduler = m_scheduler;
-      return std::move(s);
-    }
-
-    template <Resume_VIA A>
-    A &&await_transform(A &&awaiter) {
-      awaiter.via(m_scheduler);
-      return std::move(awaiter);
-    }
   };
 
   promise_type *m_promise;
@@ -89,24 +111,17 @@ struct async {
     }
   }
 
-  bool await_ready() const noexcept {
-    return m_promise->m_handle_ctl.load(std::memory_order_acquire);
+  auto operator co_await() {
+    return async_awaiter<promise_type, Return>{m_promise};
   }
 
-  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
-      -> std::coroutine_handle<> {
-    m_promise->m_continuation = handle;
-    if (m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
-      return handle;
+  auto schedule_on(scheduler *s) {
+    if (this->m_promise->m_scheduler == nullptr) {
+      this->m_promise->m_scheduler = s;
+      s->schedule(
+          std::coroutine_handle<promise_type>::from_promise(*m_promise));
     }
-    return m_promise->m_scheduler->get_next_coroutine();
-  }
-
-  auto await_resume() const noexcept -> Return & { return m_promise->m_value; }
-
-  void schedule_on(scheduler *s) {
-    this->m_promise->m_scheduler = s;
-    s->schedule(std::coroutine_handle<promise_type>::from_promise(*m_promise));
+    return async_awaiter<promise_type, Return>{m_promise};
   }
 };
 
@@ -147,24 +162,17 @@ struct async<void> {
     }
   }
 
-  bool await_ready() const noexcept {
-    return m_promise->m_handle_ctl.load(std::memory_order_relaxed);
+  auto operator co_await() {
+    return async_awaiter<promise_type, void>{m_promise};
   }
 
-  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
-      -> std::coroutine_handle<> {
-    m_promise->m_continuation = handle;
-    if (m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
-      return handle;
+  auto schedule_on(scheduler *s) {
+    if (this->m_promise->m_scheduler == nullptr) {
+      this->m_promise->m_scheduler = s;
+      s->schedule(
+          std::coroutine_handle<promise_type>::from_promise(*m_promise));
     }
-    return m_promise->m_scheduler->get_next_coroutine();
-  }
-
-  constexpr void await_resume() const noexcept {}
-
-  void schedule_on(scheduler *s) {
-    this->m_promise->m_scheduler = s;
-    s->schedule(std::coroutine_handle<promise_type>::from_promise(*m_promise));
+    return async_awaiter<promise_type, void>{m_promise};
   }
 };
 

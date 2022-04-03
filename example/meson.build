@@ -11,7 +11,8 @@ examples_async = executable('async', 'async.cpp',
     include_directories:[base_inc_dir],
     dependencies : [thread,uring,atomic_dep],
     link_with : [
-        scheduler_lib
+        scheduler_lib,
+        io_lib
     ]
 )
 

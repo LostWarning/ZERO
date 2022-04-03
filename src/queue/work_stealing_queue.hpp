@@ -4,6 +4,7 @@
 #include "circular_array.hpp"
 
 #include <atomic>
+#include <iostream>
 
 template <typename T>
 class work_stealing_queue {
@@ -33,16 +34,18 @@ public:
     size_t front            = m_front.load(std::memory_order_acquire);
     circular_array<T> *data = m_data.load(std::memory_order_relaxed);
 
-    if (data->size() - 2 < static_cast<size_t>(back - (front - 1))) {
-      std::cerr << front << " - " << back << std::endl;
-      if (back < (front - 1)) {
-        size_t a  = 0;
-        auto size = (back + ((a - 1) - front)) + 1;
-        if (data->size() - 1 < size) {
-          resize(data, back, front);
+    if (data->size() - 1 < static_cast<size_t>(back - front)) {
+      if (front - 1 != back) {
+        std::cerr << front << " - " << back << std::endl;
+        if (back < (front - 1)) {
+          size_t a  = 0;
+          auto size = (back + ((a - 1) - front)) + 1;
+          if (data->size() - 1 < size) {
+            data = resize(data, back, front);
+          }
+        } else {
+          data = resize(data, back, front);
         }
-      } else {
-        resize(data, back, front);
       }
     }
 
@@ -91,14 +94,13 @@ public:
   }
 
 protected:
-  void resize(circular_array<T> *data, size_t back, size_t front) {
-    std::cerr << "WSQ Resize" << std::endl;
+  circular_array<T> *resize(circular_array<T> *data, size_t back,
+                            size_t front) {
     circular_array<T> *new_data = data->resize(back, front);
     delete m_old.load(std::memory_order_relaxed);
-
     m_old.store(data, std::memory_order_relaxed);
-
     m_data.store(new_data, std::memory_order_relaxed);
+    return new_data;
   }
 };
 

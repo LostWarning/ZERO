@@ -33,7 +33,7 @@ public:
     size_t front            = m_front.load(std::memory_order_acquire);
     circular_array<T> *data = m_data.load(std::memory_order_relaxed);
 
-    if (data->size() - 1 < static_cast<size_t>(back - front)) {
+    if (data->size() - 2 < static_cast<size_t>(back - (front - 1))) {
       if (back < front) {
         size_t a  = 0;
         auto size = (back + ((a - 1) - front)) + 1;

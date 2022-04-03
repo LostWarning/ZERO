@@ -60,21 +60,14 @@ public:
 
     m_io_queues[m_thread_id - 1]->enqueue(operation);
 
-    auto is_queues_empty = [&] {
-      bool is_empty = true;
-      for (auto &q : this->m_io_queues) {
-        is_empty = is_empty && q->empty();
-      }
-      return is_empty;
-    };
-
-    while (!is_queues_empty() &&
+    while (!io_queue_empty() &&
            !m_io_sq_running.exchange(true, std::memory_order_seq_cst)) {
 
-      while (!is_queues_empty()) {
+      while (!io_queue_empty()) {
         for (auto &q : m_io_queues) {
-          q->init_io_uring_ops(&m_uring);
-          io_uring_submit(&m_uring);
+          if (q->init_io_uring_ops(&m_uring)) {
+            io_uring_submit(&m_uring);
+          }
         }
       }
 
@@ -167,6 +160,14 @@ protected:
       drain_io_results();
     }
     return;
+  }
+
+  bool io_queue_empty() {
+    bool is_empty = true;
+    for (auto &q : this->m_io_queues) {
+      is_empty = is_empty && q->empty();
+    }
+    return is_empty;
   }
 };
 

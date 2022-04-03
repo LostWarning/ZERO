@@ -41,10 +41,10 @@ public:
         size_t a  = 0;
         auto size = (back + ((a - 1) - front)) + 1;
         if (data->size() - 1 < size) {
-          resize(data, back, front);
+          data = resize(data, back, front);
         }
       } else {
-        resize(data, back, front);
+        data = resize(data, back, front);
       }
     }
 
@@ -68,14 +68,13 @@ public:
   }
 
 protected:
-  void resize(circular_array<T> *data, size_t back, size_t front) {
-    std::cerr << "iowq Resize" << std::endl;
+  circular_array<T> *resize(circular_array<T> *data, size_t back,
+                            size_t front) {
     circular_array<T> *new_data = data->resize(back, front);
     delete m_old.load(std::memory_order_relaxed);
-
     m_old.store(data, std::memory_order_relaxed);
-
     m_data.store(new_data, std::memory_order_relaxed);
+    return new_data;
   }
 };
 

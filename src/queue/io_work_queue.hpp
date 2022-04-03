@@ -20,7 +20,10 @@ public:
     m_data.store(new circular_array<T>(capacity), std::memory_order_relaxed);
   }
 
-  ~io_work_queue() { delete m_data.load(std::memory_order_relaxed); }
+  ~io_work_queue() {
+    delete m_data.load(std::memory_order_relaxed);
+    delete m_old.load(std::memory_order_relaxed);
+  }
 
   bool empty() const noexcept {
     size_t back  = m_back.load(std::memory_order_relaxed);
@@ -45,7 +48,7 @@ public:
       }
     }
 
-    data->push(back, item);
+    data->push(back, std::forward<T>(item));
     m_back.store(back + 1, std::memory_order_release);
   }
 
@@ -60,12 +63,13 @@ public:
 
     circular_array<T> *data = m_data.load(std::memory_order_consume);
     item                    = data->pop(front);
-    m_front++;
+    m_front.store(m_front + 1, std::memory_order_seq_cst);
     return true;
   }
 
 protected:
   void resize(circular_array<T> *data, size_t back, size_t front) {
+    std::cerr << "iowq Resize" << std::endl;
     circular_array<T> *new_data = data->resize(back, front);
     delete m_old.load(std::memory_order_relaxed);
 

@@ -24,7 +24,7 @@ class lock_free_stack {
   };
   std::atomic<block_ptr> m_head;
 
-  pool_allocator<item, 1016> m_allocator;
+  pool_allocator<item, 1024> m_allocator;
 
 public:
   lock_free_stack() {

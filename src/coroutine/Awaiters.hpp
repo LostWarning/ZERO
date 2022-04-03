@@ -30,7 +30,7 @@ struct get_scheduler {
 };
 
 struct Awaiter_Transforms {
-  scheduler *m_scheduler;
+  scheduler *m_scheduler{nullptr};
   template <Resume_VIA A>
   A &await_transform(A &awaiter) {
     awaiter.via(m_scheduler);
@@ -75,6 +75,11 @@ struct Awaiter_Transforms {
   get_scheduler &&await_transform(get_scheduler &&gs) {
     gs.m_scheduler = m_scheduler;
     return std::move(gs);
+  }
+
+  template <typename Default>
+  Default &&await_transform(Default &&d) {
+    return static_cast<Default &&>(d);
   }
 };
 

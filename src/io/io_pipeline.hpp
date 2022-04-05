@@ -3,7 +3,6 @@
 
 #include "io_operations.hpp"
 #include "queue/io_work_queue.hpp"
-#include "queue/pool_allocator.hpp"
 #include "uring_data.hpp"
 
 #include <atomic>
@@ -31,7 +30,7 @@ public:
 
     bool status;
     if (m_has_overflow_work) {
-      std::visit([&](auto &&item) { status = item.run(uring); },
+      std::visit([&](IO_URING_OP auto &&item) { status = item.run(uring); },
                  m_overflow_work);
       if (!status) {
         std::cerr << "Queue Full\n";
@@ -44,7 +43,8 @@ public:
     unsigned int count = 0;
     io_operation op;
     while (m_io_work_queue.dequeue(op)) {
-      std::visit([&](auto &&item) { status = item.run(uring); }, op);
+      std::visit([&](IO_URING_OP auto &&item) { status = item.run(uring); },
+                 op);
       if (!status) {
         std::cerr << "Queue Full\n";
         m_overflow_work     = op;

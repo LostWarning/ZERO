@@ -46,9 +46,6 @@ public:
     if (m_thread_id == 0) {
       m_thread_id =
           m_io_queue_count.fetch_add(1, std::memory_order_relaxed) + 1;
-    }
-
-    if (m_uring_data_allocator == nullptr) {
       m_uring_data_allocator = new uring_allocator;
       m_uring_data_allocators.push_back(m_uring_data_allocator);
     }

@@ -10,6 +10,8 @@
 #include <mutex>
 #include <vector>
 
+using task_queue = work_stealing_queue<std::coroutine_handle<>>;
+
 struct thread_status {
   enum class STATUS { NEW, READY, RUNNING, SUSPENDED };
   std::atomic<STATUS> m_status;
@@ -42,7 +44,7 @@ struct thread_context {
   std::thread m_thread;
   thread_status m_thread_status;
   std::coroutine_handle<> m_waiting_channel;
-  work_stealing_queue<std::coroutine_handle<>> *m_tasks;
+  task_queue *m_tasks;
 };
 
 class scheduler {

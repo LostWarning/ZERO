@@ -4,8 +4,6 @@
 #include <iostream>
 #include <thread>
 
-using namespace std::chrono_literals;
-
 thread_local unsigned int scheduler::m_thread_id         = 0;
 thread_local unsigned int scheduler::m_coro_scheduler_id = 0;
 unsigned int scheduler::m_coro_scheduler_count           = 0;
@@ -14,7 +12,7 @@ scheduler::scheduler() {
   m_id = ++m_coro_scheduler_count;
   m_thread_cxts.reserve(128);
   thread_context *io_cxt = new thread_context;
-  io_cxt->m_tasks        = new work_stealing_queue<std::coroutine_handle<>>(64);
+  io_cxt->m_tasks        = new task_queue(64);
   m_thread_cxts.push_back(io_cxt);
   spawn_workers(std::thread::hardware_concurrency());
 }
@@ -52,7 +50,7 @@ bool scheduler::steal_task(std::coroutine_handle<> &handle) noexcept {
 void scheduler::schedule(const std::coroutine_handle<> &handle) noexcept {
   if (m_coro_scheduler_id != m_id || m_thread_id == 0) {
     std::unique_lock lk(m_global_task_queue_mutex);
-    m_thread_cxts[m_thread_id]->m_tasks->enqueue(handle);
+    m_thread_cxts[0]->m_tasks->enqueue(handle);
   } else {
     m_thread_cxts[m_thread_id]->m_tasks->enqueue(handle);
   }
@@ -82,8 +80,7 @@ scheduler_task scheduler::awaiter() {
 
     constexpr bool await_ready() const noexcept { return false; }
 
-    std::coroutine_handle<>
-    await_suspend(const std::coroutine_handle<> &) noexcept {
+    auto await_suspend(const std::coroutine_handle<> &) const noexcept {
       return m_handle_ref;
     }
 
@@ -123,8 +120,8 @@ void scheduler::spawn_workers(const unsigned int &count) {
 void scheduler::init_thread() {
   thread_context *cxt           = new thread_context;
   cxt->m_thread_status.m_status = thread_status::STATUS::READY;
-  cxt->m_tasks           = new work_stealing_queue<std::coroutine_handle<>>(64);
-  cxt->m_waiting_channel = awaiter().handle();
+  cxt->m_tasks                  = new task_queue(64);
+  cxt->m_waiting_channel        = awaiter().handle();
   m_thread_cxts.push_back(cxt);
 }
 

@@ -10,5 +10,6 @@ io_lib = library('io',io_src,
         atomic_dep
     ],
     link_with : [
+        scheduler_lib
     ]
 )

@@ -8,7 +8,8 @@ task<int> print_file(io_service &io, const std::string &filename) {
   char buffer[128]{0};
   int dir = open(".", 0);
   int fd  = co_await io.openat(dir, filename.c_str(), 0, 0);
-  int len = co_await io.read(fd, buffer, 128, 0);
+  auto t1 = io.read(fd, buffer, 128, 0);
+  int len = co_await t1;
   std::cout << buffer << std::endl;
   co_return len;
 }

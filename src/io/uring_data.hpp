@@ -33,23 +33,30 @@ public:
     Other.m_allocator = nullptr;
   }
 
-  bool await_ready() const noexcept {
-    return m_data->m_handle_ctl.load(std::memory_order_relaxed);
-  }
+  auto operator co_await() {
+    struct {
+      uring_data *m_data = nullptr;
+      bool await_ready() const noexcept {
+        return m_data->m_handle_ctl.load(std::memory_order_relaxed);
+      }
 
-  auto await_suspend(const std::coroutine_handle<> &handle) noexcept
-      -> std::coroutine_handle<> {
-    m_data->m_handle = handle;
-    auto schd        = m_data->m_scheduler;
-    if (m_data->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
-      return handle;
-    }
-    return schd->get_next_coroutine();
-  }
-  int await_resume() const noexcept {
-    // Acquire the changes to the result
-    m_data->m_handle_ctl.load(std::memory_order_acq_rel);
-    return m_data->m_result;
+      auto await_suspend(const std::coroutine_handle<> &handle) noexcept
+          -> std::coroutine_handle<> {
+        m_data->m_handle = handle;
+        auto schd        = m_data->m_scheduler;
+        if (m_data->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
+          return handle;
+        }
+        return schd->get_next_coroutine();
+      }
+      int await_resume() const noexcept {
+        // Acquire the changes to the result
+        m_data->m_handle_ctl.load(std::memory_order_acq_rel);
+        return m_data->m_result;
+      }
+    } awaiter{m_data};
+
+    return awaiter;
   }
 
   uring_awaiter(uring_allocator *allocator) {

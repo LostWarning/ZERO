@@ -93,11 +93,25 @@ void io_service::handle_completion(io_uring_cqe *cqe) {
   }
 }
 
-// void io_service::submit(io_batch &batch) {
-//   if (!m_io_sq_running.exchange(true, std::memory_order_relaxed)) {
+void io_service::submit(io_batch<io_service> &batch) {
+  unsigned int completed = 0;
+  auto &operations       = batch.operations();
+  size_t op_count        = operations.size();
+  if (!m_io_sq_running.exchange(true, std::memory_order_relaxed)) {
+    for (auto &op : operations) {
+      if (std::visit(
+              [&](IO_URING_OP auto &&item) { return item.run(&m_uring); },
+              op)) {
+        ++completed;
+      }
+    }
+    m_io_sq_running.store(false, std::memory_order_relaxed);
+  }
+  if (completed != operations.size()) {
+    for (size_t i = completed; i < op_count; ++i) {
+      m_io_queues[m_thread_id - 1]->enqueue(operations[i]);
+    }
+  }
 
-//     m_io_sq_running.store(false, std::memory_order_relaxed);
-//   }
-
-//   submit();
-// }
+  submit();
+}

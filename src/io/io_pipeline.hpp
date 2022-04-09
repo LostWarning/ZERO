@@ -28,32 +28,31 @@ public:
 
   unsigned int init_io_uring_ops(io_uring *const uring) {
 
-    bool status;
+    auto submit_operation = [&uring](IO_URING_OP auto &&item) {
+      return item.run(uring);
+    };
+
+    unsigned int completed = 0;
     if (m_has_overflow_work) {
-      std::visit([&](IO_URING_OP auto &&item) { status = item.run(uring); },
-                 m_overflow_work);
-      if (!status) {
+      if (!std::visit(submit_operation, m_overflow_work)) {
         std::cerr << "Queue Full\n";
-        return 0;
       } else {
         m_has_overflow_work = false;
+        ++completed;
       }
     }
 
-    unsigned int count = 0;
     io_operation op;
     while (m_io_work_queue.dequeue(op)) {
-      std::visit([&](IO_URING_OP auto &&item) { status = item.run(uring); },
-                 op);
-      if (!status) {
+      if (!std::visit(submit_operation, op)) {
         std::cerr << "Queue Full\n";
         m_overflow_work     = op;
         m_has_overflow_work = true;
-        return count;
+      } else {
+        ++completed;
       }
-      ++count;
     }
-    return count;
+    return completed;
   }
 
   bool empty() const noexcept { return m_io_work_queue.empty(); }

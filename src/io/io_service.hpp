@@ -1,7 +1,7 @@
 #ifndef __IO_IO_SERVICE_HPP__
 #define __IO_IO_SERVICE_HPP__
 
-// #include "io_batch.hpp"
+#include "io_batch.hpp"
 #include "io_pipeline.hpp"
 #include "uring_data.hpp"
 
@@ -47,6 +47,8 @@ public:
     return true;
   }
 
+  auto batch() { return io_batch(this); }
+
   auto openat(const int &dfd, const char *const &filename, const int &flags,
               const mode_t &mode) -> uring_awaiter {
     return submit_io(io_uring_op_openat_t(dfd, filename, flags, mode));
@@ -87,16 +89,22 @@ public:
 
   void submit();
 
-  //   void submit(io_batch &batch);
+  uring_data::allocator *get_awaiter_allocator() {
+    setup_uring_allocator();
+    return m_uio_data_allocator;
+  }
+
+  void submit(io_batch<io_service> &batch);
 
 protected:
-  auto submit_io(IO_URING_OP auto &&operation) -> uring_awaiter {
+  template <IO_URING_OP OP>
+  auto submit_io(OP &&operation) -> uring_awaiter {
 
     setup_uring_allocator();
 
     auto future = operation.get_future(m_uio_data_allocator);
 
-    m_io_queues[m_thread_id - 1]->enqueue(operation);
+    m_io_queues[m_thread_id - 1]->enqueue(std::forward<OP>(operation));
 
     submit();
 

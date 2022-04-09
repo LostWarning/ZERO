@@ -26,6 +26,10 @@ public:
     m_io_work_queue.enqueue(io_operation(std::forward<T>(val)));
   }
 
+  void enqueue(std::vector<io_operation> &items) {
+    m_io_work_queue.bulk_enqueue(items);
+  }
+
   unsigned int init_io_uring_ops(io_uring *const uring) {
 
     auto submit_operation = [&uring](IO_URING_OP auto &&item) {

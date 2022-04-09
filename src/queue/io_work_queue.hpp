@@ -52,6 +52,29 @@ public:
     m_back.store(back + 1, std::memory_order_release);
   }
 
+  void bulk_enqueue(std::vector<T> &items) {
+    size_t items_count      = items.size();
+    size_t back             = m_back.load(std::memory_order_relaxed);
+    size_t front            = m_front.load(std::memory_order_acquire);
+    circular_array<T> *data = m_data.load(std::memory_order_relaxed);
+
+    if ((data->size() - 1 - items_count) < static_cast<size_t>(back - front)) {
+      if (back < front) {
+        size_t a  = 0;
+        auto size = (back + ((a - 1) - front)) + 1;
+        if ((data->size() - 1 - items_count) < size) {
+          data = resize(data, back, front);
+        }
+      } else {
+        data = resize(data, back, front);
+      }
+    }
+    for (size_t i = 0; i < items_count; ++i) {
+      data->push(back + i, items[i]);
+    }
+    m_back.store(back + 1 + items_count, std::memory_order_release);
+  }
+
   bool dequeue(T &item) {
 
     size_t back  = m_back.load(std::memory_order_relaxed);

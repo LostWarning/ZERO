@@ -105,6 +105,9 @@ void io_service::submit(io_batch<io_service> &batch) {
         ++completed;
       }
     }
+    if (completed) {
+      io_uring_submit(&m_uring);
+    }
     m_io_sq_running.store(false, std::memory_order_relaxed);
   }
   if (completed != operations.size()) {
@@ -112,6 +115,5 @@ void io_service::submit(io_batch<io_service> &batch) {
       m_io_queues[m_thread_id - 1]->enqueue(operations[i]);
     }
   }
-
   submit();
 }

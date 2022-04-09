@@ -33,3 +33,12 @@ examples_http = executable('http', 'http.cpp',
         io_lib
     ]
 )
+
+examples_read_file_batch = executable('read_file_batch', 'read_file_batch.cpp',
+    include_directories:[base_inc_dir],
+    dependencies : [thread,uring,atomic_dep],
+    link_with : [
+        scheduler_lib,
+        io_lib
+    ]
+)

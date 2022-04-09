@@ -81,4 +81,21 @@ This is a thread pool and a work stealing scheduler.
 
 # io
 ## `io_service`
-Wrapper for io_uring to support cpp coroutine. io_service have a dedicated thread for handling io.
+Wrapper for io_uring to support cpp coroutine. io_service have a dedicated thread for handling io and the io can be invoked from multiple thread.
+
+## Supported features
+### `Chaining request`
+### `Batch Operation`
+### `Fixed Buffers`
+
+## Supported io operations
+### `openat`
+### `read`
+### `write`
+### `read_fixed`
+### `write_fixed`
+### `close`
+### `accept`
+### `send`
+### `recv`
+### `sleep`

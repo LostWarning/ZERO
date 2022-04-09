@@ -117,3 +117,19 @@ void io_service::submit(io_batch<io_service> &batch) {
   }
   submit();
 }
+
+void io_service::submit(io_link<io_service> &io_link) {
+  auto &operations = io_link.operations();
+  size_t op_count  = operations.size();
+  if (op_count == 0) {
+    return;
+  }
+
+  // Remove the IOSQE_IO_HARDLINK flag from the last element
+  std::visit([](auto &&op) { op.m_sqe_flags &= (~IOSQE_IO_HARDLINK); },
+             operations[op_count - 1]);
+
+  m_io_queues[m_thread_id - 1]->enqueue(operations);
+
+  submit();
+}

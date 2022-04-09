@@ -2,6 +2,7 @@
 #define __IO_IO_SERVICE_HPP__
 
 #include "io_batch.hpp"
+#include "io_link.hpp"
 #include "io_pipeline.hpp"
 #include "uring_data.hpp"
 
@@ -12,7 +13,9 @@
 #include <liburing.h>
 #include <liburing/io_uring.h>
 #include <memory>
-#include <span>
+
+// TODO: if io_uring_submit fails then the submission should start from the last
+// submitted queue to keep order of the linked requests
 
 class io_service {
   static thread_local unsigned int m_thread_id;
@@ -48,6 +51,8 @@ public:
   }
 
   auto batch() { return io_batch(this); }
+
+  auto link() { return io_link(this); }
 
   auto openat(const int &dfd, const char *const &filename, const int &flags,
               const mode_t &mode) -> uring_awaiter {
@@ -95,6 +100,8 @@ public:
   }
 
   void submit(io_batch<io_service> &batch);
+
+  void submit(io_link<io_service> &link);
 
 protected:
   template <IO_URING_OP OP>

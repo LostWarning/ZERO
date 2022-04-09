@@ -15,7 +15,7 @@
 #include <sys/socket.h>
 
 using io          = io_service;
-using http_client = http::http_client<io, 128>;
+using http_client = http::http_client<io, 8192>;
 
 char send_buffer[1024]{0};
 size_t send_buffer_len;

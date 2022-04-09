@@ -58,7 +58,7 @@ public:
   http_client(IO *io, int client_fd) : m_io{io}, m_client_fd{client_fd} {}
 
   task<> start() {
-    int len      = 0;
+    size_t len   = 0;
     request *req = new request;
     while (m_alive.load(std::memory_order_relaxed)) {
       len += co_await m_io->recv(m_client_fd, req->m_header.m_data + len,
@@ -66,7 +66,7 @@ public:
       if (len <= 0) {
         m_alive.store(false, std::memory_order_relaxed);
       } else if (!req->m_header.parse()) {
-        if (len == BUFFER_SIZE) {
+        if (len >= BUFFER_SIZE) {
           m_alive.store(false, std::memory_order_relaxed);
         } else {
           continue;

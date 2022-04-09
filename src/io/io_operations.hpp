@@ -34,7 +34,7 @@ struct io_uring_op_openat_t : public io_uring_future {
 
   io_uring_op_openat_t(const int &dir, const char *const &filename,
                        const int &flags, const mode_t &mode,
-                       unsigned char sqe_flags = 0)
+                       unsigned char sqe_flags)
       : m_dir{dir}
       , m_filename{filename}
       , m_flags{flags}
@@ -63,7 +63,7 @@ struct io_uring_op_read_t : public io_uring_future {
   io_uring_op_read_t() = default;
 
   io_uring_op_read_t(const int &fd, void *const &buffer, const unsigned &bytes,
-                     const off_t &offset, unsigned char sqe_flags = 0)
+                     const off_t &offset, unsigned char sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_bytes{bytes}
@@ -92,7 +92,7 @@ struct io_uring_op_write_t : public io_uring_future {
   io_uring_op_write_t() = default;
 
   io_uring_op_write_t(const int &fd, void *const &buffer, const unsigned &bytes,
-                      const off_t &offset, unsigned char sqe_flags = 0)
+                      const off_t &offset, unsigned char sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_bytes{bytes}
@@ -117,7 +117,7 @@ struct io_uring_op_sleep_t : public io_uring_future {
 
   io_uring_op_sleep_t() = default;
 
-  io_uring_op_sleep_t(__kernel_timespec *const &t, unsigned char sqe_flags = 0)
+  io_uring_op_sleep_t(__kernel_timespec *const &t, unsigned char sqe_flags)
       : m_time{t}, m_sqe_flags{sqe_flags} {}
 
   bool run(io_uring *const uring) {
@@ -142,7 +142,7 @@ struct io_uring_op_recv_t : public io_uring_future {
   io_uring_op_recv_t() = default;
 
   io_uring_op_recv_t(const int &fd, void *const &buffer, const size_t &length,
-                     const int &flags, unsigned char sqe_flags = 0)
+                     const int &flags, unsigned char sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_length{length}
@@ -172,7 +172,7 @@ struct io_uring_op_accept_t : public io_uring_future {
 
   io_uring_op_accept_t(const int &fd, sockaddr *const &client_info,
                        socklen_t *const &socklen, const int &flags,
-                       unsigned char sqe_flags = 0)
+                       unsigned char sqe_flags)
       : m_fd{fd}
       , m_client_info{client_info}
       , m_socklen{socklen}
@@ -201,7 +201,7 @@ struct io_uring_op_send_t : public io_uring_future {
   io_uring_op_send_t() = default;
 
   io_uring_op_send_t(const int &fd, void *const &buffer, const size_t &length,
-                     const int &flags, unsigned char sqe_flags = 0)
+                     const int &flags, unsigned char sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_length{length}
@@ -226,7 +226,7 @@ struct io_uring_op_close_t : public io_uring_future {
 
   io_uring_op_close_t() = default;
 
-  io_uring_op_close_t(const int &fd, unsigned char sqe_flags = 0)
+  io_uring_op_close_t(const int &fd, unsigned char sqe_flags)
       : m_fd{fd}, m_sqe_flags{sqe_flags} {}
 
   bool run(io_uring *const uring) {

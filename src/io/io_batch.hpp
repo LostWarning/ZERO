@@ -31,41 +31,46 @@ public:
   }
 
   auto openat(const int &dfd, const char *const &filename, const int &flags,
-              const mode_t &mode) -> uring_awaiter {
-    return batch(io_uring_op_openat_t(dfd, filename, flags, mode));
+              const mode_t &mode, unsigned char sqe_flags = 0)
+      -> uring_awaiter {
+    return batch(io_uring_op_openat_t(dfd, filename, flags, mode, sqe_flags));
   }
 
   auto read(const int &fd, void *const &buffer, const unsigned &bytes,
-            const off_t &offset) -> uring_awaiter {
-    return batch(io_uring_op_read_t(fd, buffer, bytes, offset));
+            const off_t &offset, unsigned char sqe_flags = 0) -> uring_awaiter {
+    return batch(io_uring_op_read_t(fd, buffer, bytes, offset, sqe_flags));
   }
 
   auto write(const int &fd, void *const &buffer, const unsigned &bytes,
-             const off_t &offset) -> uring_awaiter {
-    return batch(io_uring_op_write_t(fd, buffer, bytes, offset));
+             const off_t &offset, unsigned char sqe_flags = 0)
+      -> uring_awaiter {
+    return batch(io_uring_op_write_t(fd, buffer, bytes, offset, sqe_flags));
   }
 
   auto recv(const int &fd, void *const &buffer, const size_t &length,
-            const int &flags) -> uring_awaiter {
-    return batch(io_uring_op_recv_t(fd, buffer, length, flags));
+            const int &flags, unsigned char sqe_flags = 0) -> uring_awaiter {
+    return batch(io_uring_op_recv_t(fd, buffer, length, flags, sqe_flags));
   }
 
   auto accept(const int &fd, sockaddr *const &client_info,
-              socklen_t *const &socklen, const int &flags) -> uring_awaiter {
-    return batch(io_uring_op_accept_t(fd, client_info, socklen, flags));
+              socklen_t *const &socklen, const int &flags,
+              unsigned char sqe_flags = 0) -> uring_awaiter {
+    return batch(
+        io_uring_op_accept_t(fd, client_info, socklen, flags, sqe_flags));
   }
 
   auto send(const int &fd, void *const &buffer, const size_t &length,
-            const int &flags) -> uring_awaiter {
-    return batch(io_uring_op_send_t(fd, buffer, length, flags));
+            const int &flags, unsigned char sqe_flags = 0) -> uring_awaiter {
+    return batch(io_uring_op_send_t(fd, buffer, length, flags, sqe_flags));
   }
 
-  auto close(const int &fd) -> uring_awaiter {
-    return batch(io_uring_op_close_t(fd));
+  auto close(const int &fd, unsigned char sqe_flags = 0) -> uring_awaiter {
+    return batch(io_uring_op_close_t(fd, sqe_flags));
   }
 
-  auto sleep(__kernel_timespec *const &t) -> uring_awaiter {
-    return batch(io_uring_op_sleep_t(t));
+  auto sleep(__kernel_timespec *const &t, unsigned char sqe_flags = 0)
+      -> uring_awaiter {
+    return batch(io_uring_op_sleep_t(t, sqe_flags));
   }
 
   std::vector<io_operation> &operations() { return m_io_operations; }

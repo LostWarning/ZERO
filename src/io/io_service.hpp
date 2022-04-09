@@ -1,9 +1,9 @@
 #ifndef __IO_IO_SERVICE_HPP__
 #define __IO_IO_SERVICE_HPP__
 
-#include "uring_data.hpp"
-
+// #include "io_batch.hpp"
 #include "io_pipeline.hpp"
+#include "uring_data.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -16,10 +16,10 @@
 
 class io_service {
   static thread_local unsigned int m_thread_id;
-  static thread_local uring_allocator *m_uring_data_allocator;
+  static thread_local uring_data::allocator *m_uio_data_allocator;
 
   std::vector<io_op_pipeline *> m_io_queues;
-  std::vector<uring_allocator *> m_uring_data_allocators;
+  std::vector<uring_data::allocator *> m_uio_data_allocators;
 
   io_uring m_uring;
 
@@ -87,12 +87,14 @@ public:
 
   void submit();
 
+  //   void submit(io_batch &batch);
+
 protected:
   auto submit_io(IO_URING_OP auto &&operation) -> uring_awaiter {
 
     setup_uring_allocator();
 
-    auto future = operation.get_future(m_uring_data_allocator);
+    auto future = operation.get_future(m_uio_data_allocator);
 
     m_io_queues[m_thread_id - 1]->enqueue(operation);
 
@@ -108,6 +110,8 @@ protected:
   bool io_queue_empty() const noexcept;
 
   void setup_uring_allocator();
+
+  void handle_completion(io_uring_cqe *cqe);
 };
 
 #endif

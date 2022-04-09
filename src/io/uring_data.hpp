@@ -9,28 +9,38 @@
 #include <liburing.h>
 
 struct uring_data {
+  using allocator = pool_allocator<uring_data, 128>;
+
   scheduler *m_scheduler = nullptr;
+  allocator *m_allocator = nullptr;
   std::coroutine_handle<> m_handle;
   int m_result;
   unsigned int m_flags;
   std::atomic_bool m_handle_ctl{false};
-};
+  std::atomic_bool m_destroy_ctl{false};
 
-using uring_allocator = pool_allocator<uring_data, 128>;
+  void destroy() { m_allocator->deallocate(this); }
+};
 
 class uring_awaiter {
   uring_data *m_data;
-  uring_allocator *m_allocator = nullptr;
 
 public:
   uring_awaiter(const uring_awaiter &) = delete;
+  uring_awaiter &operator=(const uring_awaiter &) = delete;
 
   uring_awaiter(uring_awaiter &&Other) {
-    m_data      = Other.m_data;
-    m_allocator = Other.m_allocator;
+    m_data = Other.m_data;
 
-    Other.m_data      = nullptr;
-    Other.m_allocator = nullptr;
+    Other.m_data = nullptr;
+  }
+
+  uring_awaiter &operator=(uring_awaiter &&Other) {
+    m_data = Other.m_data;
+
+    Other.m_data = nullptr;
+
+    return *this;
   }
 
   auto operator co_await() {
@@ -59,15 +69,15 @@ public:
     return awaiter;
   }
 
-  uring_awaiter(uring_allocator *allocator) {
-    m_allocator = allocator;
-    m_data      = m_allocator->allocate();
+  uring_awaiter(uring_data::allocator *allocator) {
+    m_data              = allocator->allocate();
+    m_data->m_allocator = allocator;
   }
 
   ~uring_awaiter() {
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    if (m_allocator != nullptr) {
-      m_allocator->deallocate(m_data);
+    if (m_data != nullptr &&
+        m_data->m_destroy_ctl.exchange(true, std::memory_order_relaxed)) {
+      m_data->destroy();
     }
   }
 

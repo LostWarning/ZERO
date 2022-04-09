@@ -23,7 +23,7 @@ public:
 
   template <typename T>
   void enqueue(T &&val) {
-    m_io_work_queue.enqueue(io_operation(val));
+    m_io_work_queue.enqueue(io_operation(std::forward<T>(val)));
   }
 
   unsigned int init_io_uring_ops(io_uring *const uring) {

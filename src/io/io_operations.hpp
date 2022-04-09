@@ -8,7 +8,7 @@
 
 template <typename T>
 concept IO_URING_OP = requires(T a, io_uring *const uring,
-                               uring_allocator *alloc) {
+                               uring_data::allocator *alloc) {
   { a.run(uring) } -> std::same_as<bool>;
   { a.get_future(alloc) } -> std::same_as<uring_awaiter>;
 };
@@ -17,7 +17,7 @@ class io_uring_future {
   uring_data *m_data;
 
 public:
-  uring_awaiter get_future(uring_allocator *allocator) {
+  uring_awaiter get_future(uring_data::allocator *allocator) {
     uring_awaiter awaiter(allocator);
     m_data = awaiter.get_data();
     return awaiter;

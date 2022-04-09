@@ -1,7 +1,7 @@
 #include "io_service.hpp"
 
-thread_local unsigned int io_service::m_thread_id                = 0;
-thread_local uring_allocator *io_service::m_uring_data_allocator = nullptr;
+thread_local unsigned int io_service::m_thread_id                    = 0;
+thread_local uring_data::allocator *io_service::m_uio_data_allocator = nullptr;
 
 io_service::io_service(const u_int &entries, const u_int &flags)
     : m_entries(entries), m_flags(flags) {
@@ -23,14 +23,7 @@ unsigned int io_service::drain_io_results() {
 
   io_uring_for_each_cqe(&m_uring, head, cqe) {
     ++completed;
-    auto data = static_cast<uring_data *>(io_uring_cqe_get_data(cqe));
-    if (data != nullptr) {
-      data->m_result = cqe->res;
-      data->m_flags  = cqe->flags;
-      if (data->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
-        data->m_scheduler->schedule(data->m_handle);
-      }
-    }
+    handle_completion(cqe);
   }
   if (completed) {
     io_uring_cq_advance(&m_uring, completed);
@@ -42,14 +35,7 @@ void io_service::io_loop() noexcept {
   while (true) {
     io_uring_cqe *cqe = nullptr;
     if (io_uring_wait_cqe(&m_uring, &cqe) == 0) {
-      auto data = static_cast<uring_data *>(io_uring_cqe_get_data(cqe));
-      if (data != nullptr) {
-        data->m_result = cqe->res;
-        data->m_flags  = cqe->flags;
-        if (data->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
-          data->m_scheduler->schedule(data->m_handle);
-        }
-      }
+      handle_completion(cqe);
       io_uring_cqe_seen(&m_uring, cqe);
     } else {
       std::cerr << "Wait CQE Failed\n";
@@ -71,8 +57,8 @@ bool io_service::io_queue_empty() const noexcept {
 void io_service::setup_uring_allocator() {
   if (m_thread_id == 0) {
     m_thread_id = m_io_queue_count.fetch_add(1, std::memory_order_relaxed) + 1;
-    m_uring_data_allocator = new uring_allocator;
-    m_uring_data_allocators.push_back(m_uring_data_allocator);
+    m_uio_data_allocator = new uring_data::allocator;
+    m_uio_data_allocators.push_back(m_uio_data_allocator);
   }
 }
 
@@ -92,3 +78,26 @@ void io_service::submit() {
     m_io_sq_running.store(false, std::memory_order_relaxed);
   }
 }
+
+void io_service::handle_completion(io_uring_cqe *cqe) {
+  auto data = static_cast<uring_data *>(io_uring_cqe_get_data(cqe));
+  if (data != nullptr) {
+    data->m_result = cqe->res;
+    data->m_flags  = cqe->flags;
+    if (data->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
+      data->m_scheduler->schedule(data->m_handle);
+    }
+    if (data->m_destroy_ctl.exchange(true, std::memory_order_relaxed)) {
+      data->destroy();
+    }
+  }
+}
+
+// void io_service::submit(io_batch &batch) {
+//   if (!m_io_sq_running.exchange(true, std::memory_order_relaxed)) {
+
+//     m_io_sq_running.store(false, std::memory_order_relaxed);
+//   }
+
+//   submit();
+// }

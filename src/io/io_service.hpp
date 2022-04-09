@@ -38,14 +38,8 @@ public:
 
   ~io_service();
 
-  template <typename T, size_t n>
-  bool create_fixed_buffer(T (&size)[n]) {
-    iovec io_vec[n];
-    for (size_t i = 0; i < n; ++i) {
-      io_vec[i].iov_base = new char[size[i]];
-      io_vec[i].iov_len  = size[i];
-    }
-
+  template <size_t n>
+  bool register_buffer(iovec (&io_vec)[n]) {
     io_uring_register_buffers(&m_uring, io_vec, n);
     return true;
   }
@@ -66,10 +60,24 @@ public:
     return submit_io(io_uring_op_read_t(fd, buffer, bytes, offset, sqe_flags));
   }
 
+  auto read_fixed(const int &fd, void *const &buffer, const unsigned &bytes,
+                  const off_t &offset, const int &buf_index,
+                  unsigned char sqe_flags = 0) -> uring_awaiter {
+    return submit_io(io_uring_op_read_fixed_t(fd, buffer, bytes, offset,
+                                              buf_index, sqe_flags));
+  }
+
   auto write(const int &fd, void *const &buffer, const unsigned &bytes,
              const off_t &offset, unsigned char sqe_flags = 0)
       -> uring_awaiter {
     return submit_io(io_uring_op_write_t(fd, buffer, bytes, offset, sqe_flags));
+  }
+
+  auto write_fixed(const int &fd, void *const &buffer, const unsigned &bytes,
+                   const off_t &offset, const int &buf_index,
+                   unsigned char sqe_flags = 0) {
+    return submit_io(io_uring_op_write_fixed_t(fd, buffer, bytes, offset,
+                                               buf_index, sqe_flags));
   }
 
   auto recv(const int &fd, void *const &buffer, const size_t &length,

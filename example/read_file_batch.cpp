@@ -37,8 +37,6 @@ launch<int> coroutine_1(io_service &io) {
 int main(int, char **) {
   scheduler scheduler;
   io_service io(100, 0);
-  int buffer_size[]{32, 64, 128, 256, 512};
-  io.create_fixed_buffer(buffer_size);
   int len = coroutine_1(io).schedule_on(&scheduler);
   std::cout << "File Length : " << len << std::endl;
 

@@ -45,6 +45,7 @@ public:
 
   IO *m_io        = nullptr;
   int m_client_fd = 0;
+  void *recv_buffer;
 
 public:
   scheduler *m_scheduler;
@@ -55,22 +56,16 @@ public:
 
   std::atomic_bool m_alive = true;
 
-  http_client(IO *io, int client_fd) : m_io{io}, m_client_fd{client_fd} {}
+  http_client(IO *io, int client_fd, void *rb)
+      : m_io{io}, m_client_fd{client_fd}, recv_buffer{rb} {}
 
   task<> start() {
     size_t len   = 0;
     request *req = new request;
     while (m_alive.load(std::memory_order_relaxed)) {
-      len += co_await m_io->recv(m_client_fd, req->m_header.m_data + len,
-                                 req->m_header.get_buffer_size(), 0);
+      len += co_await m_io->read_fixed(m_client_fd, recv_buffer, 8192, 0, 1);
       if (len <= 0) {
         m_alive.store(false, std::memory_order_relaxed);
-      } else if (!req->m_header.parse()) {
-        if (len >= BUFFER_SIZE) {
-          m_alive.store(false, std::memory_order_relaxed);
-        } else {
-          continue;
-        }
       } else {
         len = 0;
         m_requests.push_back(req);
@@ -101,7 +96,7 @@ public:
   }
 
   auto send(void *const &buffer, const size_t &length, const int &flags) {
-    return m_io->send(m_client_fd, buffer, length, flags);
+    return m_io->write_fixed(m_client_fd, buffer, length, flags, 0);
   }
 
   auto close() { return m_io->close(m_client_fd); }

@@ -20,6 +20,8 @@ using http_client = http::http_client<io, 8192>;
 char send_buffer[1024]{0};
 size_t send_buffer_len;
 
+char read_buffer[8192]{0};
+
 task<> fill_response_from_file(io *io) {
   int dfd         = open(".", 0);
   int fd          = co_await io->openat(dfd, "response", 0, 0);
@@ -51,7 +53,7 @@ async<> loop(io *io, int socket_fd) {
     socklen_t client_length;
     int client_fd = co_await io->accept(socket_fd, (sockaddr *)&client_addr,
                                         &client_length, 0);
-    handle_client(new http_client(io, client_fd))
+    handle_client(new http_client(io, client_fd, read_buffer))
         .schedule_on(co_await get_scheduler());
   }
 }
@@ -91,6 +93,14 @@ int main(int argc, char **argv) {
   if (argc == 2) {
     scheduler.spawn_workers(atoi(argv[1]));
   }
+
+  iovec vec[2];
+  vec[0].iov_base = send_buffer;
+  vec[0].iov_len  = 1024;
+  vec[1].iov_base = read_buffer;
+  vec[1].iov_len  = 8192;
+
+  io.register_buffer(vec);
 
   start_accept(&io).schedule_on(&scheduler).join();
 

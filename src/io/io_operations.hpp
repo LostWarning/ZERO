@@ -82,6 +82,39 @@ struct io_uring_op_read_t : public io_uring_future {
   }
 };
 
+struct io_uring_op_read_fixed_t : public io_uring_future {
+  int m_fd;
+  void *m_buffer;
+  unsigned m_bytes;
+  off_t m_offset;
+  int m_buf_index;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_read_fixed_t() = default;
+
+  io_uring_op_read_fixed_t(const int &fd, void *const &buffer,
+                           const unsigned &bytes, const off_t &offset,
+                           const int &buf_index, unsigned char sqe_flags)
+      : m_fd{fd}
+      , m_buffer{buffer}
+      , m_bytes{bytes}
+      , m_offset{offset}
+      , m_buf_index{buf_index}
+      , m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_read_fixed(sqe, m_fd, m_buffer, m_bytes, m_offset,
+                             m_buf_index);
+    sqe->flags |= m_sqe_flags;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
 struct io_uring_op_write_t : public io_uring_future {
   int m_fd;
   void *m_buffer;
@@ -105,6 +138,39 @@ struct io_uring_op_write_t : public io_uring_future {
       return false;
     }
     io_uring_prep_write(sqe, m_fd, m_buffer, m_bytes, m_offset);
+    sqe->flags |= m_sqe_flags;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
+struct io_uring_op_write_fixed_t : public io_uring_future {
+  int m_fd;
+  void *m_buffer;
+  unsigned m_bytes;
+  off_t m_offset;
+  int m_buf_index;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_write_fixed_t() = default;
+
+  io_uring_op_write_fixed_t(const int &fd, void *const &buffer,
+                            const unsigned &bytes, const off_t &offset,
+                            const int &buf_index, unsigned char sqe_flags)
+      : m_fd{fd}
+      , m_buffer{buffer}
+      , m_bytes{bytes}
+      , m_offset{offset}
+      , m_buf_index{buf_index}
+      , m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_write_fixed(sqe, m_fd, m_buffer, m_bytes, m_offset,
+                              m_buf_index);
     sqe->flags |= m_sqe_flags;
     io_uring_sqe_set_data(sqe, m_data);
     return true;
@@ -244,6 +310,7 @@ struct io_uring_op_close_t : public io_uring_future {
 using io_operation =
     std::variant<io_uring_op_sleep_t, io_uring_op_openat_t, io_uring_op_read_t,
                  io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
-                 io_uring_op_send_t, io_uring_op_close_t>;
+                 io_uring_op_send_t, io_uring_op_close_t,
+                 io_uring_op_read_fixed_t, io_uring_op_write_fixed_t>;
 
 #endif

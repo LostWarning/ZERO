@@ -76,18 +76,19 @@ void io_service::setup_uring_allocator() {
   }
 }
 
-void io_service::submit_pending_io() {
+void io_service::submit() {
   while (!io_queue_empty() &&
          !m_io_sq_running.exchange(true, std::memory_order_seq_cst)) {
 
+    unsigned int completed = 0;
     while (!io_queue_empty()) {
       for (auto &q : m_io_queues) {
-        if (q->init_io_uring_ops(&m_uring)) {
-          io_uring_submit(&m_uring);
-        }
+        completed += q->init_io_uring_ops(&m_uring);
       }
     }
-
+    if (completed) {
+      io_uring_submit(&m_uring);
+    }
     m_io_sq_running.store(false, std::memory_order_relaxed);
   }
 }

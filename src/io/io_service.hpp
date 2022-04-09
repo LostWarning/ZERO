@@ -12,6 +12,7 @@
 #include <liburing.h>
 #include <liburing/io_uring.h>
 #include <memory>
+#include <span>
 
 class io_service {
   static thread_local unsigned int m_thread_id;
@@ -33,6 +34,18 @@ public:
   io_service(const u_int &entries, const u_int &flags);
 
   ~io_service();
+
+  template <typename T, size_t n>
+  bool create_fixed_buffer(T (&size)[n]) {
+    iovec io_vec[n];
+    for (size_t i = 0; i < n; ++i) {
+      io_vec[i].iov_base = new char[size[i]];
+      io_vec[i].iov_len  = size[i];
+    }
+
+    io_uring_register_buffers(&m_uring, io_vec, n);
+    return true;
+  }
 
   auto openat(const int &dfd, const char *const &filename, const int &flags,
               const mode_t &mode) -> uring_awaiter {
@@ -72,6 +85,8 @@ public:
     return submit_io(io_uring_op_sleep_t(t));
   }
 
+  void submit();
+
 protected:
   auto submit_io(IO_URING_OP auto &&operation) -> uring_awaiter {
 
@@ -80,6 +95,8 @@ protected:
     auto future = operation.get_future(m_uring_data_allocator);
 
     m_io_queues[m_thread_id - 1]->enqueue(operation);
+
+    submit();
 
     return future;
   }
@@ -91,8 +108,6 @@ protected:
   bool io_queue_empty() const noexcept;
 
   void setup_uring_allocator();
-
-  void submit_pending_io();
 };
 
 #endif

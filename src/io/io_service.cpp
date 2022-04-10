@@ -5,7 +5,7 @@ thread_local uring_data::allocator *io_service::m_uio_data_allocator = nullptr;
 thread_local io_op_pipeline *io_service::m_io_queue                  = nullptr;
 
 io_service::io_service(const u_int &entries, const u_int &flags)
-    : m_entries(entries), m_flags(flags) {
+    : io_operation(this), m_entries(entries), m_flags(flags) {
   io_uring_queue_init(entries, &m_uring, flags);
   m_io_cq_thread = std::move(std::thread([&] { this->io_loop(); }));
 }
@@ -84,7 +84,7 @@ void io_service::handle_completion(io_uring_cqe *cqe) {
   }
 }
 
-void io_service::submit(io_operation<io_service, OP_TYPE::BATCH> &batch) {
+void io_service::submit(io_batch<io_service> &batch) {
   unsigned int completed = 0;
   auto &operations       = batch.operations();
   size_t op_count        = operations.size();
@@ -109,7 +109,7 @@ void io_service::submit(io_operation<io_service, OP_TYPE::BATCH> &batch) {
   submit();
 }
 
-void io_service::submit(io_operation<io_service, OP_TYPE::LINK> &io_link) {
+void io_service::submit(io_link<io_service> &io_link) {
   auto &operations = io_link.operations();
   size_t op_count  = operations.size();
   if (op_count == 0) {

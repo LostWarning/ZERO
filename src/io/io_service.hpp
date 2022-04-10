@@ -20,7 +20,7 @@
 // created for it, this will end up in creating lot of allocators and queue.
 // Need to find a solution for reusing the resource or deleting it if not in use
 
-class io_service {
+class io_service : public io_operation<io_service> {
   static thread_local unsigned int m_thread_id;
   static thread_local uring_data::allocator *m_uio_data_allocator;
   static thread_local io_op_pipeline *m_io_queue;
@@ -47,80 +47,19 @@ public:
     return io_uring_register_buffers(&m_uring, io_vec, n) == 0 ? true : false;
   }
 
-  auto batch() { return io_operation<io_service, OP_TYPE::BATCH>(this); }
+  auto batch() { return io_batch<io_service>(this); }
 
-  auto link() { return io_operation<io_service, OP_TYPE::LINK>(this); }
-
-  auto openat(const int &dfd, const char *const &filename, const int &flags,
-              const mode_t &mode, unsigned char sqe_flags = 0)
-      -> uring_awaiter {
-    return submit_io(
-        io_uring_op_openat_t(dfd, filename, flags, mode, sqe_flags));
-  }
-
-  auto read(const int &fd, void *const &buffer, const unsigned &bytes,
-            const off_t &offset, unsigned char sqe_flags = 0) -> uring_awaiter {
-    return submit_io(io_uring_op_read_t(fd, buffer, bytes, offset, sqe_flags));
-  }
-
-  auto read_fixed(const int &fd, void *const &buffer, const unsigned &bytes,
-                  const off_t &offset, const int &buf_index,
-                  unsigned char sqe_flags = 0) -> uring_awaiter {
-    return submit_io(io_uring_op_read_fixed_t(fd, buffer, bytes, offset,
-                                              buf_index, sqe_flags));
-  }
-
-  auto write(const int &fd, void *const &buffer, const unsigned &bytes,
-             const off_t &offset, unsigned char sqe_flags = 0)
-      -> uring_awaiter {
-    return submit_io(io_uring_op_write_t(fd, buffer, bytes, offset, sqe_flags));
-  }
-
-  auto write_fixed(const int &fd, void *const &buffer, const unsigned &bytes,
-                   const off_t &offset, const int &buf_index,
-                   unsigned char sqe_flags = 0) {
-    return submit_io(io_uring_op_write_fixed_t(fd, buffer, bytes, offset,
-                                               buf_index, sqe_flags));
-  }
-
-  auto recv(const int &fd, void *const &buffer, const size_t &length,
-            const int &flags, unsigned char sqe_flags = 0) -> uring_awaiter {
-    return submit_io(io_uring_op_recv_t(fd, buffer, length, flags, sqe_flags));
-  }
-
-  auto accept(const int &fd, sockaddr *const &client_info,
-              socklen_t *const &socklen, const int &flags,
-              unsigned char sqe_flags = 0) -> uring_awaiter {
-    return submit_io(
-        io_uring_op_accept_t(fd, client_info, socklen, flags, sqe_flags));
-  }
-
-  auto send(const int &fd, void *const &buffer, const size_t &length,
-            const int &flags, unsigned char sqe_flags = 0) -> uring_awaiter {
-    return submit_io(io_uring_op_send_t(fd, buffer, length, flags, sqe_flags));
-  }
-
-  auto close(const int &fd, unsigned char sqe_flags = 0) -> uring_awaiter {
-    return submit_io(io_uring_op_close_t(fd, sqe_flags));
-  }
-
-  auto sleep(__kernel_timespec *const &t, unsigned char sqe_flags = 0)
-      -> uring_awaiter {
-    return submit_io(io_uring_op_sleep_t(t, sqe_flags));
-  }
+  auto link() { return io_link<io_service>(this); }
 
   uring_data::allocator *get_awaiter_allocator() {
     setup_thread_context();
     return m_uio_data_allocator;
   }
 
-  void submit();
+  void submit(io_batch<io_service> &batch);
 
-  void submit(io_operation<io_service, OP_TYPE::BATCH> &batch);
+  void submit(io_link<io_service> &link);
 
-  void submit(io_operation<io_service, OP_TYPE::LINK> &link);
-
-protected:
   template <IO_URING_OP OP>
   auto submit_io(OP &&operation) -> uring_awaiter {
 
@@ -134,6 +73,9 @@ protected:
 
     return future;
   }
+
+protected:
+  void submit();
 
   void io_loop() noexcept;
 

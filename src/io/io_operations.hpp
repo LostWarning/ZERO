@@ -25,6 +25,12 @@ public:
         io_uring_op_read_t(fd, buffer, bytes, offset, sqe_flags));
   }
 
+  auto read(const int &fd, const int &gbid, const unsigned &bytes,
+            const off_t &offset, unsigned char sqe_flags = 0) -> uring_awaiter {
+    return m_io_service->submit_io(
+        io_uring_op_read_provide_buffer_t(fd, gbid, bytes, offset, sqe_flags));
+  }
+
   auto read_fixed(const int &fd, void *const &buffer, const unsigned &bytes,
                   const off_t &offset, const int &buf_index,
                   unsigned char sqe_flags = 0) -> uring_awaiter {
@@ -52,6 +58,12 @@ public:
         io_uring_op_recv_t(fd, buffer, length, flags, sqe_flags));
   }
 
+  auto recv(const int &fd, const int &gbid, const size_t &length,
+            const int &flags, unsigned char sqe_flags = 0) -> uring_awaiter {
+    return m_io_service->submit_io(
+        io_uring_op_recv_provide_buffer_t(fd, gbid, length, flags, sqe_flags));
+  }
+
   auto accept(const int &fd, sockaddr *const &client_info,
               socklen_t *const &socklen, const int &flags,
               unsigned char sqe_flags = 0) -> uring_awaiter {
@@ -72,6 +84,12 @@ public:
   auto sleep(__kernel_timespec *const &t, unsigned char sqe_flags = 0)
       -> uring_awaiter {
     return m_io_service->submit_io(io_uring_op_sleep_t(t, sqe_flags));
+  }
+
+  auto provide_buffer(void *const addr, int buffer_length, int buffer_count,
+                      int bgid, int bid = 0, unsigned char sqe_flags = 0) {
+    return m_io_service->submit_io(io_uring_op_provide_buffer_t(
+        addr, buffer_length, buffer_count, bgid, bid, sqe_flags));
   }
 };
 

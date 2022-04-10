@@ -14,8 +14,8 @@ struct uring_data {
   scheduler *m_scheduler = nullptr;
   allocator *m_allocator = nullptr;
   std::coroutine_handle<> m_handle;
-  int m_result;
-  unsigned int m_flags;
+  int m_result         = 0;
+  unsigned int m_flags = 0;
   std::atomic_bool m_handle_ctl{false};
   std::atomic_bool m_destroy_ctl{false};
 
@@ -61,7 +61,7 @@ public:
       }
       auto await_resume() const noexcept {
         // Acquire the changes to the result
-        m_data->m_handle_ctl.load(std::memory_order_acq_rel);
+        m_data->m_handle_ctl.load();
         struct {
           int result;
           unsigned int flags;

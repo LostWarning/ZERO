@@ -82,6 +82,37 @@ struct io_uring_op_read_t : public io_uring_future {
   }
 };
 
+struct io_uring_op_read_provide_buffer_t : public io_uring_future {
+  int m_fd;
+  int m_gbid;
+  unsigned m_bytes;
+  off_t m_offset;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_read_provide_buffer_t() = default;
+
+  io_uring_op_read_provide_buffer_t(const int &fd, const int &gbid,
+                                    const unsigned &bytes, const off_t &offset,
+                                    unsigned char sqe_flags)
+      : m_fd{fd}
+      , m_gbid{gbid}
+      , m_bytes{bytes}
+      , m_offset{offset}
+      , m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_read(sqe, m_fd, nullptr, m_bytes, m_offset);
+    sqe->flags |= (m_sqe_flags | IOSQE_BUFFER_SELECT);
+    sqe->buf_group = m_gbid;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
 struct io_uring_op_read_fixed_t : public io_uring_future {
   int m_fd;
   void *m_buffer;
@@ -227,6 +258,37 @@ struct io_uring_op_recv_t : public io_uring_future {
   }
 };
 
+struct io_uring_op_recv_provide_buffer_t : public io_uring_future {
+  int m_fd;
+  int m_gbid;
+  size_t m_length;
+  int m_flags;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_recv_provide_buffer_t() = default;
+
+  io_uring_op_recv_provide_buffer_t(const int &fd, const int &gbid,
+                                    const size_t &length, const int &flags,
+                                    unsigned char sqe_flags)
+      : m_fd{fd}
+      , m_gbid{gbid}
+      , m_length{length}
+      , m_flags{flags}
+      , m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_recv(sqe, m_fd, nullptr, m_length, m_flags);
+    io_uring_sqe_set_flags(sqe, m_sqe_flags | IOSQE_BUFFER_SELECT);
+    sqe->buf_group = m_gbid;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
 struct io_uring_op_accept_t : public io_uring_future {
   int m_fd;
   sockaddr *m_client_info;
@@ -307,10 +369,44 @@ struct io_uring_op_close_t : public io_uring_future {
   }
 };
 
-using io_uring_op =
-    std::variant<io_uring_op_sleep_t, io_uring_op_openat_t, io_uring_op_read_t,
-                 io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
-                 io_uring_op_send_t, io_uring_op_close_t,
-                 io_uring_op_read_fixed_t, io_uring_op_write_fixed_t>;
+struct io_uring_op_provide_buffer_t : public io_uring_future {
+  void *m_addr;
+  int m_buffer_length;
+  int m_buffer_count;
+  int m_bgid;
+  int m_bid;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_provide_buffer_t() = default;
+
+  io_uring_op_provide_buffer_t(void *const addr, int buffer_length,
+                               int buffer_count, int bgid, int bid,
+                               unsigned char sqe_flags)
+      : m_addr{addr}
+      , m_buffer_length{buffer_length}
+      , m_buffer_count{buffer_count}
+      , m_bgid{bgid}
+      , m_bid{bid}
+      , m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_provide_buffers(sqe, m_addr, m_buffer_length, m_buffer_count,
+                                  m_bgid, m_bid);
+    sqe->flags |= m_sqe_flags;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
+using io_uring_op = std::variant<
+    io_uring_op_sleep_t, io_uring_op_openat_t, io_uring_op_read_t,
+    io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
+    io_uring_op_send_t, io_uring_op_close_t, io_uring_op_read_fixed_t,
+    io_uring_op_write_fixed_t, io_uring_op_provide_buffer_t,
+    io_uring_op_read_provide_buffer_t, io_uring_op_recv_provide_buffer_t>;
 
 #endif

@@ -16,9 +16,8 @@
 using io = io_service;
 
 char *send_buffer;
+char read_buffer[256][1024];
 size_t sb_len;
-
-char *read_buffer;
 
 task<> fill_response_from_file(io *io) {
   int dfd = open(".", 0);
@@ -30,7 +29,9 @@ task<> fill_response_from_file(io *io) {
 async<> handle_client(int fd, io *io) {
 
   while (true) {
-    auto r = co_await io->read_fixed(fd, read_buffer, 8192, 0, 1);
+    auto [r, bid] = co_await io->recv(fd, 1, 1024, 0);
+    bid           = bid >> 16;
+    io->provide_buffer(read_buffer[bid], 1024, 1, 1, bid);
     if (r <= 0) {
       co_await io->close(fd);
       co_return;
@@ -42,6 +43,7 @@ async<> handle_client(int fd, io *io) {
 }
 
 async<> loop(io *io, int socket_fd) {
+  co_await io->provide_buffer(read_buffer, 1024, 256, 1);
   while (true) {
     sockaddr_in client_addr;
     socklen_t client_length;
@@ -89,13 +91,10 @@ int main(int argc, char **argv) {
   }
 
   send_buffer = new char[1024];
-  read_buffer = new char[8192];
 
-  iovec vec[2];
+  iovec vec[1];
   vec[0].iov_base = send_buffer;
   vec[0].iov_len  = 1024;
-  vec[1].iov_base = read_buffer;
-  vec[1].iov_len  = 8192;
 
   if (!io.register_buffer(vec)) {
     std::cerr << "Buffer Registeration failed\n";

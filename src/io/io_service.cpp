@@ -12,21 +12,6 @@ io_service::io_service(const u_int &entries, const u_int &flags)
 
 io_service::~io_service() { io_uring_queue_exit(&m_uring); }
 
-unsigned int io_service::drain_io_results() {
-  unsigned completed = 0;
-  unsigned head;
-  struct io_uring_cqe *cqe;
-
-  io_uring_for_each_cqe(&m_uring, head, cqe) {
-    ++completed;
-    handle_completion(cqe);
-  }
-  if (completed) {
-    io_uring_cq_advance(&m_uring, completed);
-  }
-  return completed;
-}
-
 void io_service::io_loop() noexcept {
   while (true) {
     io_uring_cqe *cqe = nullptr;
@@ -36,8 +21,16 @@ void io_service::io_loop() noexcept {
     } else {
       std::cerr << "Wait CQE Failed\n";
     }
+    unsigned completed = 0;
+    unsigned head;
 
-    drain_io_results();
+    io_uring_for_each_cqe(&m_uring, head, cqe) {
+      ++completed;
+      handle_completion(cqe);
+    }
+    if (completed) {
+      io_uring_cq_advance(&m_uring, completed);
+    }
   }
   return;
 }
@@ -91,7 +84,7 @@ void io_service::handle_completion(io_uring_cqe *cqe) {
   }
 }
 
-void io_service::submit(io_batch<io_service> &batch) {
+void io_service::submit(io_operation<io_service, OP_TYPE::BATCH> &batch) {
   unsigned int completed = 0;
   auto &operations       = batch.operations();
   size_t op_count        = operations.size();
@@ -116,16 +109,17 @@ void io_service::submit(io_batch<io_service> &batch) {
   submit();
 }
 
-void io_service::submit(io_link<io_service> &io_link) {
+void io_service::submit(io_operation<io_service, OP_TYPE::LINK> &io_link) {
   auto &operations = io_link.operations();
   size_t op_count  = operations.size();
   if (op_count == 0) {
     return;
   }
 
-  // Remove the IOSQE_IO_HARDLINK flag from the last element
-  std::visit([](auto &&op) { op.m_sqe_flags &= (~IOSQE_IO_HARDLINK); },
-             operations[op_count - 1]);
+  for (size_t i = 0; i < op_count - 1; ++i) {
+    std::visit([](auto &&op) { op.m_sqe_flags |= IOSQE_IO_HARDLINK; },
+               operations[i]);
+  }
 
   m_io_queue->enqueue(operations);
 

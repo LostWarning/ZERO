@@ -1,8 +1,7 @@
 #ifndef __IO_IO_SERVICE_HPP__
 #define __IO_IO_SERVICE_HPP__
 
-#include "io_batch.hpp"
-#include "io_link.hpp"
+#include "io_operations.hpp"
 #include "io_pipeline.hpp"
 #include "uring_data.hpp"
 
@@ -48,9 +47,9 @@ public:
     return io_uring_register_buffers(&m_uring, io_vec, n) == 0 ? true : false;
   }
 
-  auto batch() { return io_batch(this); }
+  auto batch() { return io_operation<io_service, OP_TYPE::BATCH>(this); }
 
-  auto link() { return io_link(this); }
+  auto link() { return io_operation<io_service, OP_TYPE::LINK>(this); }
 
   auto openat(const int &dfd, const char *const &filename, const int &flags,
               const mode_t &mode, unsigned char sqe_flags = 0)
@@ -110,16 +109,16 @@ public:
     return submit_io(io_uring_op_sleep_t(t, sqe_flags));
   }
 
-  void submit();
-
   uring_data::allocator *get_awaiter_allocator() {
     setup_thread_context();
     return m_uio_data_allocator;
   }
 
-  void submit(io_batch<io_service> &batch);
+  void submit();
 
-  void submit(io_link<io_service> &link);
+  void submit(io_operation<io_service, OP_TYPE::BATCH> &batch);
+
+  void submit(io_operation<io_service, OP_TYPE::LINK> &link);
 
 protected:
   template <IO_URING_OP OP>
@@ -135,8 +134,6 @@ protected:
 
     return future;
   }
-
-  unsigned int drain_io_results();
 
   void io_loop() noexcept;
 

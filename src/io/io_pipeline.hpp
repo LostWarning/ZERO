@@ -1,7 +1,7 @@
 #ifndef __IO_IO_PIPELINE_HPP__
 #define __IO_IO_PIPELINE_HPP__
 
-#include "io_operations.hpp"
+#include "io_uring_op.hpp"
 #include "queue/io_work_queue.hpp"
 #include "uring_data.hpp"
 
@@ -14,8 +14,8 @@
 #include <unistd.h>
 
 class io_op_pipeline {
-  io_work_queue<io_operation> m_io_work_queue;
-  io_operation m_overflow_work;
+  io_work_queue<io_uring_op> m_io_work_queue;
+  io_uring_op m_overflow_work;
   bool m_has_overflow_work = false;
 
 public:
@@ -23,10 +23,10 @@ public:
 
   template <typename T>
   void enqueue(T &&val) {
-    m_io_work_queue.enqueue(io_operation(std::forward<T>(val)));
+    m_io_work_queue.enqueue(io_uring_op(std::forward<T>(val)));
   }
 
-  void enqueue(std::vector<io_operation> &items) {
+  void enqueue(std::vector<io_uring_op> &items) {
     m_io_work_queue.bulk_enqueue(items);
   }
 
@@ -46,7 +46,7 @@ public:
       }
     }
 
-    io_operation op;
+    io_uring_op op;
     while (m_io_work_queue.dequeue(op)) {
       if (!std::visit(submit_operation, op)) {
         std::cerr << "Queue Full\n";

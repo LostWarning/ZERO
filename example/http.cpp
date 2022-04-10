@@ -30,12 +30,12 @@ task<> fill_response_from_file(io *io) {
 async<> handle_client(int fd, io *io) {
 
   while (true) {
-    auto r = co_await io->recv(fd, read_buffer, 8192, 0);
+    auto r = co_await io->read_fixed(fd, read_buffer, 8192, 0, 1);
     if (r <= 0) {
       co_await io->close(fd);
       co_return;
     }
-    co_await io->send(fd, send_buffer, sb_len, 0);
+    co_await io->write_fixed(fd, send_buffer, sb_len, 0, 0);
   }
 
   co_return;

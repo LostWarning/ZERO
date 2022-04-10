@@ -59,10 +59,15 @@ public:
         }
         return schd->get_next_coroutine();
       }
-      int await_resume() const noexcept {
+      auto await_resume() const noexcept {
         // Acquire the changes to the result
         m_data->m_handle_ctl.load(std::memory_order_acq_rel);
-        return m_data->m_result;
+        struct {
+          int result;
+          unsigned int flags;
+          operator int() { return result; }
+        } result{m_data->m_result, m_data->m_flags};
+        return result;
       }
     } awaiter{m_data};
 

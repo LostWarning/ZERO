@@ -16,14 +16,14 @@
 using io = io_service;
 
 char *send_buffer;
-size_t send_buffer_len;
+size_t sb_len;
 
 char *read_buffer;
 
 task<> fill_response_from_file(io *io) {
-  int dfd         = open(".", 0);
-  int fd          = co_await io->openat(dfd, "response", 0, 0);
-  send_buffer_len = co_await io->read_fixed(fd, send_buffer, 1024, 0, 0);
+  int dfd = open(".", 0);
+  int fd  = co_await io->openat(dfd, "response", 0, 0);
+  sb_len  = co_await io->read_fixed(fd, send_buffer, 1024, 0, 0);
   co_await io->close(fd);
 }
 
@@ -35,7 +35,7 @@ async<> handle_client(int fd, io *io) {
       co_await io->close(fd);
       co_return;
     }
-    co_await io->send(fd, send_buffer, send_buffer_len, 0);
+    co_await io->send(fd, send_buffer, sb_len, 0);
   }
 
   co_return;

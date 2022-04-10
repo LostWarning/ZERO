@@ -2,7 +2,6 @@
 #include "coroutine/launch.hpp"
 #include "coroutine/scheduler/scheduler.hpp"
 #include "coroutine/task.hpp"
-#include "http/http_client.hpp"
 #include "io/io_service.hpp"
 #include <malloc.h>
 
@@ -14,36 +13,31 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-using io          = io_service;
-using http_client = http::http_client<io, 8192>;
+using io = io_service;
 
-char send_buffer[1024]{0};
+char *send_buffer;
 size_t send_buffer_len;
 
-char read_buffer[8192]{0};
+char *read_buffer;
 
 task<> fill_response_from_file(io *io) {
   int dfd         = open(".", 0);
   int fd          = co_await io->openat(dfd, "response", 0, 0);
-  send_buffer_len = co_await io->read(fd, send_buffer, 1024, 0);
+  send_buffer_len = co_await io->read_fixed(fd, send_buffer, 1024, 0, 0);
   co_await io->close(fd);
 }
 
-async<> start_client(http_client *client) { co_await client->start(); }
+async<> handle_client(int fd, io *io) {
 
-async<> handle_client(http_client *client) {
-  auto schd = co_await get_scheduler();
-  start_client(client).schedule_on(schd);
-
-  while (client->is_alive()) {
-    auto *r = co_await client->get_request();
-    if (r != nullptr) {
-      co_await client->send(send_buffer, send_buffer_len, 0);
-      delete r;
+  while (true) {
+    auto r = co_await io->recv(fd, read_buffer, 8192, 0);
+    if (r <= 0) {
+      co_await io->close(fd);
+      co_return;
     }
+    co_await io->send(fd, send_buffer, send_buffer_len, 0);
   }
-  co_await client->close();
-  delete client;
+
   co_return;
 }
 
@@ -53,8 +47,7 @@ async<> loop(io *io, int socket_fd) {
     socklen_t client_length;
     int client_fd = co_await io->accept(socket_fd, (sockaddr *)&client_addr,
                                         &client_length, 0);
-    handle_client(new http_client(io, client_fd, read_buffer))
-        .schedule_on(co_await get_scheduler());
+    handle_client(client_fd, io).schedule_on(co_await get_scheduler());
   }
 }
 
@@ -83,6 +76,7 @@ launch<> start_accept(io *io) {
     co_return;
   }
   co_await fill_response_from_file(io);
+  std::cout << send_buffer << std::endl;
   co_await loop(io, socket_fd);
   co_return;
 }
@@ -94,13 +88,18 @@ int main(int argc, char **argv) {
     scheduler.spawn_workers(atoi(argv[1]));
   }
 
+  send_buffer = new char[1024];
+  read_buffer = new char[8192];
+
   iovec vec[2];
   vec[0].iov_base = send_buffer;
   vec[0].iov_len  = 1024;
   vec[1].iov_base = read_buffer;
   vec[1].iov_len  = 8192;
 
-  io.register_buffer(vec);
+  if (!io.register_buffer(vec)) {
+    std::cerr << "Buffer Registeration failed\n";
+  }
 
   start_accept(&io).schedule_on(&scheduler).join();
 

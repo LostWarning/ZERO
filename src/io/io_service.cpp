@@ -2,16 +2,12 @@
 
 thread_local unsigned int io_service::m_thread_id                    = 0;
 thread_local uring_data::allocator *io_service::m_uio_data_allocator = nullptr;
+thread_local io_op_pipeline *io_service::m_io_queue                  = nullptr;
 
 io_service::io_service(const u_int &entries, const u_int &flags)
     : m_entries(entries), m_flags(flags) {
   io_uring_queue_init(entries, &m_uring, flags);
   m_io_cq_thread = std::move(std::thread([&] { this->io_loop(); }));
-
-  m_io_queues.resize(32);
-  for (size_t i = 0; i < 32; ++i) {
-    m_io_queues[i] = new io_op_pipeline(128);
-  }
 }
 
 io_service::~io_service() { io_uring_queue_exit(&m_uring); }
@@ -54,11 +50,13 @@ bool io_service::io_queue_empty() const noexcept {
   return is_empty;
 }
 
-void io_service::setup_uring_allocator() {
+void io_service::setup_thread_context() {
   if (m_thread_id == 0) {
-    m_thread_id = m_io_queue_count.fetch_add(1, std::memory_order_relaxed) + 1;
+    m_thread_id = m_threads.fetch_add(1, std::memory_order_relaxed) + 1;
     m_uio_data_allocator = new uring_data::allocator;
     m_uio_data_allocators.push_back(m_uio_data_allocator);
+    m_io_queue = new io_op_pipeline(128);
+    m_io_queues.push_back(m_io_queue);
   }
 }
 
@@ -112,7 +110,7 @@ void io_service::submit(io_batch<io_service> &batch) {
   }
   if (completed != operations.size()) {
     for (size_t i = completed; i < op_count; ++i) {
-      m_io_queues[m_thread_id - 1]->enqueue(operations[i]);
+      m_io_queue->enqueue(operations[i]);
     }
   }
   submit();
@@ -129,7 +127,7 @@ void io_service::submit(io_link<io_service> &io_link) {
   std::visit([](auto &&op) { op.m_sqe_flags &= (~IOSQE_IO_HARDLINK); },
              operations[op_count - 1]);
 
-  m_io_queues[m_thread_id - 1]->enqueue(operations);
+  m_io_queue->enqueue(operations);
 
   submit();
 }

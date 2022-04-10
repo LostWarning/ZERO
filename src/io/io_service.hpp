@@ -17,9 +17,14 @@
 // TODO: if io_uring_submit fails then the submission should start from the last
 // submitted queue to keep order of the linked requests
 
+// TODO: For each thread that access io_service an allocator and io_queue is
+// created for it, this will end up in creating lot of allocators and queue.
+// Need to find a solution for reusing the resource or deleting it if not in use
+
 class io_service {
   static thread_local unsigned int m_thread_id;
   static thread_local uring_data::allocator *m_uio_data_allocator;
+  static thread_local io_op_pipeline *m_io_queue;
 
   std::vector<io_op_pipeline *> m_io_queues;
   std::vector<uring_data::allocator *> m_uio_data_allocators;
@@ -31,7 +36,7 @@ class io_service {
 
   std::thread m_io_cq_thread;
   std::atomic_bool m_io_sq_running{false};
-  std::atomic_int m_io_queue_count{0};
+  std::atomic_int m_threads{0};
 
 public:
   io_service(const u_int &entries, const u_int &flags);
@@ -40,8 +45,7 @@ public:
 
   template <size_t n>
   bool register_buffer(iovec (&io_vec)[n]) {
-    io_uring_register_buffers(&m_uring, io_vec, n);
-    return true;
+    return io_uring_register_buffers(&m_uring, io_vec, n) == 0 ? true : false;
   }
 
   auto batch() { return io_batch(this); }
@@ -109,7 +113,7 @@ public:
   void submit();
 
   uring_data::allocator *get_awaiter_allocator() {
-    setup_uring_allocator();
+    setup_thread_context();
     return m_uio_data_allocator;
   }
 
@@ -121,11 +125,11 @@ protected:
   template <IO_URING_OP OP>
   auto submit_io(OP &&operation) -> uring_awaiter {
 
-    setup_uring_allocator();
+    setup_thread_context();
 
     auto future = operation.get_future(m_uio_data_allocator);
 
-    m_io_queues[m_thread_id - 1]->enqueue(std::forward<OP>(operation));
+    m_io_queue->enqueue(std::forward<OP>(operation));
 
     submit();
 
@@ -138,7 +142,7 @@ protected:
 
   bool io_queue_empty() const noexcept;
 
-  void setup_uring_allocator();
+  void setup_thread_context();
 
   void handle_completion(io_uring_cqe *cqe);
 };

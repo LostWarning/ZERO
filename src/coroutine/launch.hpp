@@ -42,10 +42,18 @@ struct launch {
   };
 
   launch(promise_type *promise) : m_promise(promise) {}
+
   launch(const launch &) = delete;
+  launch &operator=(const launch &) = delete;
+
   launch(launch &&l) {
     this->m_promise = l.m_promise;
     l.m_promise     = nullptr;
+  }
+  launch &operator=(launch &&Other) {
+    this->m_promise = Other.m_promise;
+    Other.m_promise = nullptr;
+    return *this;
   }
 
   ~launch() {
@@ -87,10 +95,18 @@ struct launch<void> {
   };
 
   launch(promise_type *promise) : m_promise{promise} {}
+
   launch(const launch &) = delete;
+  launch &operator=(const launch &) = delete;
+
   launch(launch &&l) {
     this->m_promise = l.m_promise;
     l.m_promise     = nullptr;
+  }
+  launch &operator=(launch &&Other) {
+    this->m_promise = Other.m_promise;
+    Other.m_promise = nullptr;
+    return *this;
   }
 
   ~launch() {

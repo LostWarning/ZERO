@@ -7,6 +7,34 @@
 #include <algorithm>
 #include <coroutine>
 
+template <typename Promise, typename Return = void>
+struct task_awaiter {
+  Promise *m_promise;
+  constexpr bool await_ready() const noexcept { return false; }
+
+  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
+      -> std::coroutine_handle<> {
+    m_promise->m_continuation = handle;
+    return std::coroutine_handle<Promise>::from_promise(*m_promise);
+  }
+
+  constexpr Return await_resume() const noexcept { return m_promise->m_value; }
+};
+
+template <typename Promise>
+struct task_awaiter<Promise, void> {
+  Promise *m_promise;
+  constexpr bool await_ready() const noexcept { return false; }
+
+  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
+      -> std::coroutine_handle<> {
+    m_promise->m_continuation = handle;
+    return std::coroutine_handle<Promise>::from_promise(*m_promise);
+  }
+
+  constexpr void await_resume() const noexcept {}
+};
+
 template <typename Return = void>
 struct task {
   struct promise_type : public Awaiter_Transforms {
@@ -41,15 +69,22 @@ struct task {
   promise_type *m_promise;
   task(promise_type *promise) : m_promise(promise) {}
 
-  constexpr bool await_ready() const noexcept { return false; }
+  task(const task &) = delete;
+  task &operator=(const task &) = delete;
 
-  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
-      -> std::coroutine_handle<> {
-    m_promise->m_continuation = handle;
-    return std::coroutine_handle<promise_type>::from_promise(*m_promise);
+  task(task &&Other) {
+    this->m_promise = Other.m_promise;
+    Other.m_promise = nullptr;
+  }
+  task &operator=(task &&Other) {
+    this->m_promise = Other.m_promise;
+    Other.m_promise = nullptr;
+    return *this;
   }
 
-  constexpr Return await_resume() const noexcept { return m_promise->m_value; }
+  auto operator co_await() {
+    return task_awaiter<promise_type, Return>{m_promise};
+  }
 
   void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
 };
@@ -85,15 +120,22 @@ struct task<void> {
   promise_type *m_promise;
   task(promise_type *promise) : m_promise(promise) {}
 
-  constexpr bool await_ready() const noexcept { return false; }
+  task(const task &) = delete;
+  task &operator=(const task &) = delete;
 
-  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
-      -> std::coroutine_handle<> {
-    m_promise->m_continuation = handle;
-    return std::coroutine_handle<promise_type>::from_promise(*m_promise);
+  task(task &&Other) {
+    this->m_promise = Other.m_promise;
+    Other.m_promise = nullptr;
+  }
+  task &operator=(task &&Other) {
+    this->m_promise = Other.m_promise;
+    Other.m_promise = nullptr;
+    return *this;
   }
 
-  constexpr void await_resume() const noexcept {}
+  auto operator co_await() {
+    return task_awaiter<promise_type, void>{m_promise};
+  }
 
   void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
 };

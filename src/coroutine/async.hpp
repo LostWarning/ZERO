@@ -98,10 +98,16 @@ struct async {
   async(promise_type *promise) : m_promise(promise) {}
 
   async(const async &) = delete;
+  async operator=(const async &) = delete;
 
   async(async &&Other) {
     this->m_promise = Other.m_promise;
     Other.m_promise = nullptr;
+  }
+  async &operator=(async &&Other) {
+    this->m_promise = Other.m_promise;
+    Other.m_promise = nullptr;
+    return *this;
   }
 
   ~async() {
@@ -150,11 +156,18 @@ struct async<void> {
   async(promise_type *promise) : m_promise(promise) {}
 
   async(const async &) = delete;
+  async &operator=(const async &) = delete;
 
   async(async &&Other) {
     this->m_promise = Other.m_promise;
     Other.m_promise = nullptr;
   }
+  async &operator=(async &&Other) {
+    this->m_promise = Other.m_promise;
+    Other.m_promise = nullptr;
+    return *this;
+  }
+
   ~async() {
     if (m_promise != nullptr &&
         m_promise->m_destroy_ctl.exchange(true, std::memory_order_relaxed)) {

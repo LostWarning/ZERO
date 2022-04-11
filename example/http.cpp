@@ -30,7 +30,7 @@ async<> handle_client(int fd, io *io) {
 
   while (true) {
     auto [r, bid] = co_await io->recv(fd, 1, 1024, 0);
-    bid           = bid >> 16;
+    bid           = io->get_buffer_index(bid);
     io->provide_buffer(read_buffer[bid], 1024, 1, 1, bid);
     if (r <= 0) {
       co_await io->close(fd);

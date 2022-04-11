@@ -74,6 +74,8 @@ public:
     return future;
   }
 
+  unsigned int get_buffer_index(unsigned int &flag) { return flag >> 16; }
+
 protected:
   void submit();
 

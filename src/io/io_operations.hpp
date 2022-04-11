@@ -12,6 +12,10 @@ class io_operation {
 public:
   explicit io_operation(IO_SERVICE *service) : m_io_service{service} {}
 
+  auto nop(unsigned char sqe_flags = 0) -> uring_awaiter {
+    return m_io_service->submit_io(io_uring_op_nop_t(sqe_flags));
+  }
+
   auto openat(const int &dfd, const char *const &filename, const int &flags,
               const mode_t &mode, unsigned char sqe_flags = 0)
       -> uring_awaiter {

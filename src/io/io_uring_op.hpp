@@ -205,6 +205,36 @@ struct io_uring_op_write_t : public io_uring_future {
   }
 };
 
+struct io_uring_op_writev_t : public io_uring_future {
+  int m_fd;
+  iovec *m_iovecs;
+  unsigned int m_count;
+  off_t m_offset;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_writev_t() = default;
+
+  io_uring_op_writev_t(const int &fd, iovec *const &iovecs,
+                       const unsigned int &count, const off_t &offset,
+                       unsigned char &sqe_flags)
+      : m_fd{fd}
+      , m_iovecs{iovecs}
+      , m_count{count}
+      , m_offset{offset}
+      , m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_writev(sqe, m_fd, m_iovecs, m_count, m_offset);
+    sqe->flags |= m_sqe_flags;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
 struct io_uring_op_write_fixed_t : public io_uring_future {
   int m_fd;
   void *m_buffer;
@@ -438,6 +468,7 @@ using io_uring_op =
                  io_uring_op_send_t, io_uring_op_read_fixed_t,
                  io_uring_op_write_fixed_t, io_uring_op_provide_buffer_t,
                  io_uring_op_readv_t, io_uring_op_read_provide_buffer_t,
-                 io_uring_op_close_t, io_uring_op_recv_provide_buffer_t>;
+                 io_uring_op_close_t, io_uring_op_recv_provide_buffer_t,
+                 io_uring_op_writev_t>;
 
 #endif

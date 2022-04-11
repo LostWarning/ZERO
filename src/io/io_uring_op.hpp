@@ -34,7 +34,7 @@ struct io_uring_op_openat_t : public io_uring_future {
 
   io_uring_op_openat_t(const int &dir, const char *const &filename,
                        const int &flags, const mode_t &mode,
-                       unsigned char sqe_flags)
+                       unsigned char &sqe_flags)
       : m_dir{dir}
       , m_filename{filename}
       , m_flags{flags}
@@ -63,7 +63,7 @@ struct io_uring_op_read_t : public io_uring_future {
   io_uring_op_read_t() = default;
 
   io_uring_op_read_t(const int &fd, void *const &buffer, const unsigned &bytes,
-                     const off_t &offset, unsigned char sqe_flags)
+                     const off_t &offset, unsigned char &sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_bytes{bytes}
@@ -82,6 +82,36 @@ struct io_uring_op_read_t : public io_uring_future {
   }
 };
 
+struct io_uring_op_readv_t : public io_uring_future {
+  int m_fd;
+  iovec *m_iovecs;
+  unsigned int m_count;
+  off_t m_offset;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_readv_t() = default;
+
+  io_uring_op_readv_t(const int &fd, iovec *const &iovecs,
+                      const unsigned int &count, const off_t &offset,
+                      unsigned char &sqe_flags)
+      : m_fd{fd}
+      , m_iovecs{iovecs}
+      , m_count{count}
+      , m_offset{offset}
+      , m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_readv(sqe, m_fd, m_iovecs, m_count, m_offset);
+    sqe->flags |= m_sqe_flags;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
 struct io_uring_op_read_provide_buffer_t : public io_uring_future {
   int m_fd;
   int m_gbid;
@@ -93,7 +123,7 @@ struct io_uring_op_read_provide_buffer_t : public io_uring_future {
 
   io_uring_op_read_provide_buffer_t(const int &fd, const int &gbid,
                                     const unsigned &bytes, const off_t &offset,
-                                    unsigned char sqe_flags)
+                                    unsigned char &sqe_flags)
       : m_fd{fd}
       , m_gbid{gbid}
       , m_bytes{bytes}
@@ -125,7 +155,7 @@ struct io_uring_op_read_fixed_t : public io_uring_future {
 
   io_uring_op_read_fixed_t(const int &fd, void *const &buffer,
                            const unsigned &bytes, const off_t &offset,
-                           const int &buf_index, unsigned char sqe_flags)
+                           const int &buf_index, unsigned char &sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_bytes{bytes}
@@ -156,7 +186,7 @@ struct io_uring_op_write_t : public io_uring_future {
   io_uring_op_write_t() = default;
 
   io_uring_op_write_t(const int &fd, void *const &buffer, const unsigned &bytes,
-                      const off_t &offset, unsigned char sqe_flags)
+                      const off_t &offset, unsigned char &sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_bytes{bytes}
@@ -187,7 +217,7 @@ struct io_uring_op_write_fixed_t : public io_uring_future {
 
   io_uring_op_write_fixed_t(const int &fd, void *const &buffer,
                             const unsigned &bytes, const off_t &offset,
-                            const int &buf_index, unsigned char sqe_flags)
+                            const int &buf_index, unsigned char &sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_bytes{bytes}
@@ -214,7 +244,7 @@ struct io_uring_op_sleep_t : public io_uring_future {
 
   io_uring_op_sleep_t() = default;
 
-  io_uring_op_sleep_t(__kernel_timespec *const &t, unsigned char sqe_flags)
+  io_uring_op_sleep_t(__kernel_timespec *const &t, unsigned char &sqe_flags)
       : m_time{t}, m_sqe_flags{sqe_flags} {}
 
   bool run(io_uring *const uring) {
@@ -239,7 +269,7 @@ struct io_uring_op_recv_t : public io_uring_future {
   io_uring_op_recv_t() = default;
 
   io_uring_op_recv_t(const int &fd, void *const &buffer, const size_t &length,
-                     const int &flags, unsigned char sqe_flags)
+                     const int &flags, unsigned char &sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_length{length}
@@ -269,7 +299,7 @@ struct io_uring_op_recv_provide_buffer_t : public io_uring_future {
 
   io_uring_op_recv_provide_buffer_t(const int &fd, const int &gbid,
                                     const size_t &length, const int &flags,
-                                    unsigned char sqe_flags)
+                                    unsigned char &sqe_flags)
       : m_fd{fd}
       , m_gbid{gbid}
       , m_length{length}
@@ -300,7 +330,7 @@ struct io_uring_op_accept_t : public io_uring_future {
 
   io_uring_op_accept_t(const int &fd, sockaddr *const &client_info,
                        socklen_t *const &socklen, const int &flags,
-                       unsigned char sqe_flags)
+                       unsigned char &sqe_flags)
       : m_fd{fd}
       , m_client_info{client_info}
       , m_socklen{socklen}
@@ -329,7 +359,7 @@ struct io_uring_op_send_t : public io_uring_future {
   io_uring_op_send_t() = default;
 
   io_uring_op_send_t(const int &fd, void *const &buffer, const size_t &length,
-                     const int &flags, unsigned char sqe_flags)
+                     const int &flags, unsigned char &sqe_flags)
       : m_fd{fd}
       , m_buffer{buffer}
       , m_length{length}
@@ -354,7 +384,7 @@ struct io_uring_op_close_t : public io_uring_future {
 
   io_uring_op_close_t() = default;
 
-  io_uring_op_close_t(const int &fd, unsigned char sqe_flags)
+  io_uring_op_close_t(const int &fd, unsigned char &sqe_flags)
       : m_fd{fd}, m_sqe_flags{sqe_flags} {}
 
   bool run(io_uring *const uring) {
@@ -381,7 +411,7 @@ struct io_uring_op_provide_buffer_t : public io_uring_future {
 
   io_uring_op_provide_buffer_t(void *const addr, int buffer_length,
                                int buffer_count, int bgid, int bid,
-                               unsigned char sqe_flags)
+                               unsigned char &sqe_flags)
       : m_addr{addr}
       , m_buffer_length{buffer_length}
       , m_buffer_count{buffer_count}
@@ -402,11 +432,12 @@ struct io_uring_op_provide_buffer_t : public io_uring_future {
   }
 };
 
-using io_uring_op = std::variant<
-    io_uring_op_sleep_t, io_uring_op_openat_t, io_uring_op_read_t,
-    io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
-    io_uring_op_send_t, io_uring_op_close_t, io_uring_op_read_fixed_t,
-    io_uring_op_write_fixed_t, io_uring_op_provide_buffer_t,
-    io_uring_op_read_provide_buffer_t, io_uring_op_recv_provide_buffer_t>;
+using io_uring_op =
+    std::variant<io_uring_op_sleep_t, io_uring_op_openat_t, io_uring_op_read_t,
+                 io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
+                 io_uring_op_send_t, io_uring_op_read_fixed_t,
+                 io_uring_op_write_fixed_t, io_uring_op_provide_buffer_t,
+                 io_uring_op_readv_t, io_uring_op_read_provide_buffer_t,
+                 io_uring_op_close_t, io_uring_op_recv_provide_buffer_t>;
 
 #endif

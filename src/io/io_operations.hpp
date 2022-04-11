@@ -31,6 +31,13 @@ public:
         io_uring_op_read_provide_buffer_t(fd, gbid, bytes, offset, sqe_flags));
   }
 
+  auto readv(const int &fd, iovec *const &iovecs, const unsigned int &count,
+             const off_t &offset, unsigned char &sqe_flags = 0)
+      -> uring_awaiter {
+    return m_io_service->submit_io(
+        io_uring_op_readv_t(fd, iovecs, count, offset, sqe_flags));
+  }
+
   auto read_fixed(const int &fd, void *const &buffer, const unsigned &bytes,
                   const off_t &offset, const int &buf_index,
                   unsigned char sqe_flags = 0) -> uring_awaiter {

@@ -93,10 +93,13 @@ Wrapper for io_uring to support cpp coroutine. io_service have a dedicated threa
 ### `openat`
 ### `read`
 ### `write`
+### `readv`
+### `writev`
 ### `read_fixed`
 ### `write_fixed`
 ### `close`
 ### `accept`
 ### `send`
 ### `recv`
-### `sleep`
+### `nop`
+### `timeout`

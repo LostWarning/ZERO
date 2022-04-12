@@ -16,6 +16,12 @@ public:
     return m_io_service->submit_io(io_uring_op_nop_t(sqe_flags));
   }
 
+  auto cancel(uring_awaiter &awaiter, const int &flags,
+              unsigned char sqe_flags = 0) -> uring_awaiter {
+    return m_io_service->submit_io(
+        io_uring_op_cancel_t(awaiter.get_data(), flags, sqe_flags));
+  }
+
   auto openat(const int &dfd, const char *const &filename, const int &flags,
               const mode_t &mode, unsigned char sqe_flags = 0)
       -> uring_awaiter {

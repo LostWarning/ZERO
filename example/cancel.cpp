@@ -15,17 +15,6 @@
 
 using io = io_service;
 
-char *send_buffer;
-char read_buffer[256][1024];
-size_t sb_len;
-
-task<> fill_response_from_file(io *io) {
-  int dfd = open(".", 0);
-  int fd  = co_await io->openat(dfd, "response", 0, 0);
-  sb_len  = co_await io->read_fixed(fd, send_buffer, 1024, 0, 0);
-  co_await io->close(fd);
-}
-
 async<> wait_for_connection(io *io, auto &awaiter) {
   std::cout << "Waiting for connection\n";
   co_await awaiter;
@@ -34,7 +23,6 @@ async<> wait_for_connection(io *io, auto &awaiter) {
 }
 
 async<> loop(io *io, int socket_fd) {
-  co_await io->provide_buffer(read_buffer, 1024, 256, 1);
   while (true) {
     sockaddr_in client_addr;
     socklen_t client_length;
@@ -72,8 +60,7 @@ launch<> start_accept(io *io) {
     std::cerr << "Error listening\n";
     co_return;
   }
-  co_await fill_response_from_file(io);
-  std::cout << send_buffer << std::endl;
+
   co_await loop(io, socket_fd);
   co_return;
 }
@@ -83,16 +70,6 @@ int main(int argc, char **argv) {
   io io(1000, 0);
   if (argc == 2) {
     scheduler.spawn_workers(atoi(argv[1]));
-  }
-
-  send_buffer = new char[1024];
-
-  iovec vec[1];
-  vec[0].iov_base = send_buffer;
-  vec[0].iov_len  = 1024;
-
-  if (!io.register_buffer(vec)) {
-    std::cerr << "Buffer Registeration failed\n";
   }
 
   start_accept(&io).schedule_on(&scheduler).join();

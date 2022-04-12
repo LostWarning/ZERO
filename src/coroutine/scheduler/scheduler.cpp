@@ -48,10 +48,10 @@ bool scheduler::steal_task(std::coroutine_handle<> &handle) noexcept {
 }
 
 void scheduler::schedule(const std::coroutine_handle<> &handle) noexcept {
-  if (m_coro_scheduler_id != m_id || m_thread_id == 0) {
+  if (m_coro_scheduler_id != m_id || m_thread_id == 0) [[unlikely]] {
     std::unique_lock lk(m_global_task_queue_mutex);
     m_thread_cxts[0]->m_tasks->enqueue(handle);
-  } else {
+  } else [[likely]] {
     m_thread_cxts[m_thread_id]->m_tasks->enqueue(handle);
   }
   if (m_total_ready_threads.load(std::memory_order_relaxed)) {

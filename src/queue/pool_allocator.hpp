@@ -58,10 +58,11 @@ public:
     block_ptr head = m_allocator_head.load();
     block_ptr new_head{nullptr, 0};
     do {
-      while (head.m_ptr == nullptr) {
-        allocate_block();
-        head = m_allocator_head.load();
-      }
+      while (head.m_ptr == nullptr)
+        [[unlikely]] {
+          allocate_block();
+          head = m_allocator_head.load();
+        }
       new_head.m_ptr = head.m_ptr->m_next;
       new_head.m_tag = head.m_tag + 1;
     } while (!m_allocator_head.compare_exchange_strong(head, new_head));
@@ -74,10 +75,11 @@ public:
     block_ptr head = m_allocator_head.load();
     block_ptr new_head{nullptr, 0};
     do {
-      while (head.m_ptr == nullptr) {
-        allocate_block();
-        head = m_allocator_head.load();
-      }
+      while (head.m_ptr == nullptr)
+        [[unlikely]] {
+          allocate_block();
+          head = m_allocator_head.load();
+        }
       new_head.m_ptr = head.m_ptr->m_next;
       new_head.m_tag = head.m_tag + 1;
     } while (!m_allocator_head.compare_exchange_strong(head, new_head));

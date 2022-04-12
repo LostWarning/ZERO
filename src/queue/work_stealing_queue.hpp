@@ -33,7 +33,7 @@ public:
     size_t front            = m_front.load(std::memory_order_acquire);
     circular_array<T> *data = m_data.load(std::memory_order_relaxed);
 
-    if (data->size() - 1 < static_cast<size_t>(back - front)) {
+    if (data->size() - 1 < static_cast<size_t>(back - front)) [[unlikely]] {
       if (front - 1 != back) {
         if (back < (front - 1)) {
           size_t a  = 0;

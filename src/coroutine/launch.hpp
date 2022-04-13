@@ -74,6 +74,8 @@ struct launch {
     return std::move(*this);
   }
 
+  auto cancel() { this->m_promise->m_stop_source.request_stop(); }
+
 private:
   promise_type *m_promise;
 };
@@ -124,6 +126,8 @@ struct launch<void> {
         std::coroutine_handle<promise_type>::from_promise(*m_promise));
     return std::move(*this);
   }
+
+  auto cancel() { this->m_promise->m_stop_source.request_stop(); }
 
 private:
   promise_type *m_promise;

@@ -52,7 +52,16 @@ examples_read_file_link = executable('read_file_link', 'read_file_link.cpp',
     ]
 )
 
-examples_cancel = executable('cancel', 'cancel.cpp',
+examples_io_cancel = executable('io_cancel', 'io_cancel.cpp',
+    include_directories:[base_inc_dir],
+    dependencies : [thread,uring,atomic_dep],
+    link_with : [
+        scheduler_lib,
+        io_lib
+    ]
+)
+
+examples_coro_cancel = executable('coro_cancel', 'coro_cancel.cpp',
     include_directories:[base_inc_dir],
     dependencies : [thread,uring,atomic_dep],
     link_with : [

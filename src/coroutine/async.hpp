@@ -24,6 +24,11 @@ struct async_awaiter {
   }
 
   auto await_resume() const noexcept -> Return & { return m_promise->m_value; }
+
+  auto cancel() {
+    this->m_promise->m_stop_source.request_stop();
+    return *this;
+  }
 };
 
 template <typename Promise>
@@ -43,6 +48,11 @@ struct async_awaiter<Promise, void> {
   }
 
   void await_resume() const noexcept {}
+
+  auto cancel() {
+    this->m_promise->m_stop_source.request_stop();
+    return *this;
+  }
 };
 
 struct async_final_suspend {
@@ -73,10 +83,10 @@ template <typename Ret = void>
 struct async {
   using Return = std::remove_reference<Ret>::type;
   struct promise_type : public Awaiter_Transforms {
+    Return m_value;
     std::coroutine_handle<> m_continuation;
     std::atomic_bool m_handle_ctl{false};
     std::atomic_bool m_destroy_ctl{false};
-    Return m_value;
 
     std::suspend_always initial_suspend() const noexcept { return {}; }
 
@@ -127,6 +137,11 @@ struct async {
       s->schedule(
           std::coroutine_handle<promise_type>::from_promise(*m_promise));
     }
+    return async_awaiter<promise_type, Return>{m_promise};
+  }
+
+  auto cancel() {
+    this->m_promise->m_stop_source.request_stop();
     return async_awaiter<promise_type, Return>{m_promise};
   }
 };
@@ -185,6 +200,11 @@ struct async<void> {
       s->schedule(
           std::coroutine_handle<promise_type>::from_promise(*m_promise));
     }
+    return async_awaiter<promise_type, void>{m_promise};
+  }
+
+  auto cancel() {
+    this->m_promise->m_stop_source.request_stop();
     return async_awaiter<promise_type, void>{m_promise};
   }
 };

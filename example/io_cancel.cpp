@@ -15,7 +15,7 @@
 
 using io = io_service;
 
-async<> wait_for_connection(io *io, auto &awaiter) {
+async<> wait_for_connection(auto &awaiter) {
   std::cout << "Waiting for connection\n";
   co_await awaiter;
   std::cerr << "Request Cancelled\n";
@@ -28,8 +28,7 @@ async<> loop(io *io, int socket_fd) {
     socklen_t client_length;
     auto client_awaiter =
         io->accept(socket_fd, (sockaddr *)&client_addr, &client_length, 0);
-    wait_for_connection(io, client_awaiter)
-        .schedule_on(co_await get_scheduler());
+    wait_for_connection(client_awaiter).schedule_on(co_await get_scheduler());
     std::cerr << "Sleeping for 5 sec\n";
     sleep(5);
     co_await io->cancel(client_awaiter, 0);

@@ -97,6 +97,7 @@ scheduler_task scheduler::awaiter() {
     if (m_stop_requested) [[unlikely]] {
       co_return;
     }
+
     lk.unlock();
     set_thread_status(thread_status::STATUS::RUNNING);
     co_await thread_awaiter{handle};

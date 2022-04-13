@@ -19,6 +19,11 @@ struct task_awaiter {
   }
 
   constexpr Return await_resume() const noexcept { return m_promise->m_value; }
+
+  auto cancel() {
+    this->m_promise->m_stop_source.request_stop();
+    return *this;
+  }
 };
 
 template <typename Promise>
@@ -33,6 +38,11 @@ struct task_awaiter<Promise, void> {
   }
 
   constexpr void await_resume() const noexcept {}
+
+  auto cancel() {
+    this->m_promise->m_stop_source.request_stop();
+    return *this;
+  }
 };
 
 template <typename Return = void>
@@ -87,6 +97,11 @@ struct task {
   }
 
   void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
+
+  auto cancel() {
+    this->m_promise->m_stop_source.request_stop();
+    return task_awaiter<promise_type, Return>{m_promise};
+  }
 };
 
 template <>
@@ -138,6 +153,11 @@ struct task<void> {
   }
 
   void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
+
+  auto cancel() {
+    this->m_promise->m_stop_source.request_stop();
+    return task_awaiter<promise_type, void>{m_promise};
+  }
 };
 
 #endif

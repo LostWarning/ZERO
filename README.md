@@ -1,8 +1,12 @@
 # SMP
-This is an experimental project for exploring coroutine feature in cpp including io_service based on io_uring and a work stealing scheduler for coroutine scheduling.
-# Coroutine Types
+This project is aimed at creating a cpp coroutine framework including coroutine compactable io_service based on io_uring and a work stealing scheduler for scheduling the coroutine.
+# Coroutine
+Coroutine are function that can suspend execution and can be resumed later. This allow us to write programs where a thread dont have to wait for a result instead it can suspend the current coroutine and start executing another one and resume it once the result is available.
+
+Three types of coroutine currently supported are launch, task and async. Launch is the entry point for the coroutine it can be called from normal function and provide methods to wait for the result. task and async can only be called from a coroutine. task starts executing in the same thread as the calling coroutine and async allow the user to start the coroutine in another thread asynchronously.
+
 ## `task<T>`
-A task coroutine does not start until it is co_awaited. When a task is created is start in suspended state and when it is co_awaited the calling coroutine is suspended and the task resumes in the same thread as the caller.
+A task is one of the basic coroutine type. When a task is created it is suspended initially and return an awaiter to the caller. To run this task we have to co_await the awaiter. When the task is co_awaited the calling coroutine is suspended and the task is resumed and the calling coroutine is set as a continuation of the task, so when the task completes it can resume the suspended coroutine.
 ```
 #include "coroutine/launch.hpp"
 #include "coroutine/scheduler/scheduler.hpp"

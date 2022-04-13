@@ -4,7 +4,6 @@
 #include "Awaiters.hpp"
 #include "scheduler/scheduler.hpp"
 
-#include <algorithm>
 #include <coroutine>
 
 template <typename Promise, typename Return = void>

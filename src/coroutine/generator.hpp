@@ -6,13 +6,31 @@
 
 #include <coroutine>
 
+template <typename Promise>
 struct generator_promise {
-  std::coroutine_handle<> &m_continuation;
+  Promise *m_promise;
   constexpr bool await_ready() const noexcept { return false; }
 
   std::coroutine_handle<>
   await_suspend(const std::coroutine_handle<> &) const noexcept {
-    return m_continuation;
+    return m_promise->m_continuation;
+  }
+
+  constexpr void await_resume() const noexcept {}
+};
+
+template <typename Promise>
+struct generator_final_suspend {
+  Promise *m_promise;
+  constexpr bool await_ready() const noexcept { return false; }
+
+  std::coroutine_handle<>
+  await_suspend(const std::coroutine_handle<> &) const noexcept {
+    if (m_promise->m_cancel_handle_ctl.exchange(true,
+                                                std::memory_order_relaxed)) {
+      m_promise->m_scheduler->schedule(m_promise->m_cancel_continuation);
+    }
+    return m_promise->m_continuation;
   }
 
   constexpr void await_resume() const noexcept {}
@@ -46,13 +64,13 @@ struct generator {
 
     std::suspend_always initial_suspend() const noexcept { return {}; }
 
-    generator_promise final_suspend() noexcept {
-      return generator_promise{m_continuation};
+    auto final_suspend() noexcept {
+      return generator_final_suspend<promise_type>{this};
     }
 
     auto yield_value(const Return &value) {
       m_value = value;
-      return generator_promise{m_continuation};
+      return generator_promise<promise_type>{this};
     }
 
     void return_value(const Return &value) noexcept {

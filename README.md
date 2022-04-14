@@ -1,9 +1,37 @@
 # SMP
 This project is aimed at creating a cpp coroutine framework including coroutine compactable io_service based on io_uring and a work stealing scheduler for scheduling the coroutine.
-# Coroutine
+
 Coroutine are function that can suspend execution and can be resumed later. This allow us to write programs where a thread dont have to wait for a result instead it can suspend the current coroutine and start executing another one and resume it once the result is available.
 
-Three types of coroutine currently supported are launch, task and async. Launch is the entry point for the coroutine it can be called from normal function and provide methods to wait for the result. task and async can only be called from a coroutine. task starts executing in the same thread as the calling coroutine and async allow the user to start the coroutine in another thread asynchronously.
+* Coroutine
+    * [`launch<T>`](#launcht)
+    * [`task<T>`](#taskt)
+    * [`generator<T>`](#generatort)
+    * [`async<T>`](#asynct)
+
+* IO Features
+    * [`Chain Request`](#chain-request)
+    * [`Batch Operation`](#batch-operation)
+    * [`Fixed Buffers`](#fixed-buffers)
+    * [`Provide Buffers`](#provide-buffers)
+
+* IO Operations
+    * [`openat`](#openat)
+    * [`read`](#read)
+    * [`write`](#write)
+    * [`readv`](#readv)
+    * [`writev`](#writev)
+    * [`read_fixed`](#readfixed)
+    * [`write_fixed`](#writefixed)
+    * [`close`](#close)
+    * [`accept`](#accept)
+    * [`send`](#send)
+    * [`recv`](#recv)
+    * [`cancel`](#cancel)
+    * [`timeout`](#timeout)
+    * [`nop`](#nop)
+
+# Coroutine
 
 ## `task<T>`
 A task is one of the basic coroutine type. When a task is created it is suspended initially and return an awaiter to the caller. To run this task we have to co_await the awaiter. When the task is co_awaited the calling coroutine is suspended and the task is resumed and the calling coroutine is set as a continuation of the task, so when the task completes it can resume the suspended coroutine.
@@ -36,6 +64,8 @@ int main(int, char **) {
   return 0;
 }
 ```
+## `generator<T>`
+
 ## `async<T>`
 async coroutine start in suspended state. It can then be scheduled to run asynchronously by passing a scheduler to `schedule_on` member function or by `co_await`. When using `co_await` the scheduler used for current coroutine is used to schedule the `async`.
 ```

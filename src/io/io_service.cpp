@@ -10,10 +10,13 @@ io_service::io_service(const u_int &entries, const u_int &flags)
   m_io_cq_thread = std::move(std::thread([&] { this->io_loop(); }));
 }
 
-io_service::~io_service() { io_uring_queue_exit(&m_uring); }
-
+io_service::~io_service() {
+  m_stop_requested.store(true, std::memory_order_relaxed);
+  nop(IOSQE_IO_DRAIN);
+  m_io_cq_thread.join();
+}
 void io_service::io_loop() noexcept {
-  while (true) {
+  while (!m_stop_requested) {
     io_uring_cqe *cqe = nullptr;
     if (io_uring_wait_cqe(&m_uring, &cqe) == 0) {
       handle_completion(cqe);
@@ -32,6 +35,7 @@ void io_service::io_loop() noexcept {
       io_uring_cq_advance(&m_uring, completed);
     }
   }
+  io_uring_queue_exit(&m_uring);
   return;
 }
 

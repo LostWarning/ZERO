@@ -37,6 +37,8 @@ class io_service : public io_operation<io_service> {
   std::atomic_bool m_io_sq_running{false};
   std::atomic_int m_threads{0};
 
+  std::atomic_bool m_stop_requested{false};
+
 public:
   io_service(const u_int &entries, const u_int &flags);
 

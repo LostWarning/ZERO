@@ -51,14 +51,10 @@ struct cancel_awaiter {
   auto await_suspend(const std::coroutine_handle<> &handle) noexcept {
     m_promise->m_cancel_continuation = handle;
 
-    if (m_promise->m_cancel_handle_ctl.exchange(true,
-                                                std::memory_order_acq_rel)) {
-      return handle;
-    } else {
-      m_promise->m_stop_source.request_stop();
-    }
-
-    return m_promise->m_scheduler->get_next_coroutine();
+    return m_promise->m_cancel_handle_ctl.exchange(true,
+                                                   std::memory_order_acq_rel)
+               ? handle
+               : m_promise->m_scheduler->get_next_coroutine();
   }
 
   void await_resume() const noexcept {}

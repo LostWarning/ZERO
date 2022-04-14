@@ -15,8 +15,9 @@ io_service::~io_service() {
   nop(IOSQE_IO_DRAIN);
   m_io_cq_thread.join();
 }
+
 void io_service::io_loop() noexcept {
-  while (!m_stop_requested) {
+  while (!m_stop_requested.load(std::memory_order_relaxed)) {
     io_uring_cqe *cqe = nullptr;
     if (io_uring_wait_cqe(&m_uring, &cqe) == 0) {
       handle_completion(cqe);

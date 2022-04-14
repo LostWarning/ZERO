@@ -19,7 +19,10 @@ struct task_awaiter {
 
   constexpr Return await_resume() const noexcept { return m_promise->m_value; }
 
-  auto cancel() { return cancel_awaiter<Promise>(m_promise); }
+  auto cancel() {
+    m_promise->m_stop_source.request_stop();
+    return cancel_awaiter<Promise>(m_promise);
+  }
 };
 
 template <typename Promise>
@@ -35,7 +38,10 @@ struct task_awaiter<Promise, void> {
 
   constexpr void await_resume() const noexcept {}
 
-  auto cancel() { return cancel_awaiter<Promise>(m_promise); }
+  auto cancel() {
+    m_promise->m_stop_source.request_stop();
+    return cancel_awaiter<Promise>(m_promise);
+  }
 };
 
 template <typename Promise>
@@ -46,7 +52,7 @@ struct task_final_awaiter {
   std::coroutine_handle<>
   await_suspend(const std::coroutine_handle<> &) noexcept {
     if (m_promise->m_cancel_handle_ctl.exchange(true,
-                                                std::memory_order_relaxed)) {
+                                                std::memory_order_acquire)) {
       m_promise->m_scheduler->schedule(m_promise->m_cancel_continuation);
     }
     return m_promise->m_continuation;
@@ -96,7 +102,10 @@ struct task {
 
   void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
 
-  auto cancel() { return cancel_awaiter<promise_type>(m_promise); }
+  auto cancel() {
+    m_promise->m_stop_source.request_stop();
+    return cancel_awaiter<promise_type>(m_promise);
+  }
 };
 
 template <>
@@ -137,7 +146,10 @@ struct task<void> {
 
   void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
 
-  auto cancel() { return cancel_awaiter<promise_type>(m_promise); }
+  auto cancel() {
+    m_promise->m_stop_source.request_stop();
+    return cancel_awaiter<promise_type>(m_promise);
+  }
 };
 
 #endif

@@ -14,7 +14,7 @@ struct async_awaiter {
     return m_promise->m_handle_ctl.load(std::memory_order_acquire);
   }
 
-  auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
+  auto await_suspend(const std::coroutine_handle<> &handle) noexcept
       -> std::coroutine_handle<> {
     m_promise->m_continuation = handle;
     if (m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
@@ -25,10 +25,7 @@ struct async_awaiter {
 
   auto await_resume() const noexcept -> Return & { return m_promise->m_value; }
 
-  auto cancel() {
-    this->m_promise->m_stop_source.request_stop();
-    return *this;
-  }
+  auto cancel() { return cancel_awaiter<Promise>(m_promise); }
 };
 
 template <typename Promise>
@@ -49,27 +46,28 @@ struct async_awaiter<Promise, void> {
 
   void await_resume() const noexcept {}
 
-  auto cancel() {
-    this->m_promise->m_stop_source.request_stop();
-    return *this;
-  }
+  auto cancel() { return cancel_awaiter<Promise>(m_promise); }
 };
 
+template <typename Promise>
 struct async_final_suspend {
-  std::coroutine_handle<> &m_continuation;
-  scheduler *m_scheduler;
-  std::atomic_bool &m_handle_ctl;
-  std::atomic_bool &m_destroy_ctl;
+  Promise *m_promise;
   constexpr bool await_ready() const noexcept { return false; }
 
   auto await_suspend(const std::coroutine_handle<> &handle) const noexcept
       -> std::coroutine_handle<> {
 
-    auto continuation = m_handle_ctl.exchange(true, std::memory_order_acq_rel)
-                            ? m_continuation
-                            : m_scheduler->get_next_coroutine();
+    if (m_promise->m_cancel_handle_ctl.exchange(true,
+                                                std::memory_order_relaxed)) {
+      m_promise->m_scheduler->schedule(m_promise->m_cancel_continuation);
+    }
 
-    if (m_destroy_ctl.exchange(true, std::memory_order_relaxed)) {
+    auto continuation =
+        m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)
+            ? m_promise->m_continuation
+            : m_promise->m_scheduler->get_next_coroutine();
+
+    if (m_promise->m_destroy_ctl.exchange(true, std::memory_order_relaxed)) {
       handle.destroy();
     }
 
@@ -90,10 +88,7 @@ struct async {
 
     std::suspend_always initial_suspend() const noexcept { return {}; }
 
-    auto final_suspend() noexcept {
-      return async_final_suspend{m_continuation, m_scheduler, m_handle_ctl,
-                                 m_destroy_ctl};
-    }
+    auto final_suspend() noexcept { return async_final_suspend{this}; }
 
     void return_value(const Return &value) noexcept {
       m_value = std::move(value);
@@ -140,10 +135,7 @@ struct async {
     return async_awaiter<promise_type, Return>{m_promise};
   }
 
-  auto cancel() {
-    this->m_promise->m_stop_source.request_stop();
-    return async_awaiter<promise_type, Return>{m_promise};
-  }
+  auto cancel() { return cancel_awaiter<promise_type>(m_promise); }
 };
 
 template <>
@@ -155,10 +147,7 @@ struct async<void> {
 
     std::suspend_always initial_suspend() const noexcept { return {}; }
 
-    auto final_suspend() noexcept {
-      return async_final_suspend{m_continuation, m_scheduler, m_handle_ctl,
-                                 m_destroy_ctl};
-    }
+    auto final_suspend() noexcept { return async_final_suspend{this}; }
 
     void return_void() const noexcept {}
 
@@ -203,10 +192,7 @@ struct async<void> {
     return async_awaiter<promise_type, void>{m_promise};
   }
 
-  auto cancel() {
-    this->m_promise->m_stop_source.request_stop();
-    return async_awaiter<promise_type, void>{m_promise};
-  }
+  auto cancel() { return cancel_awaiter<promise_type>(m_promise); }
 };
 
 #endif

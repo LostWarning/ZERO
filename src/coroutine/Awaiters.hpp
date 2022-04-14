@@ -41,9 +41,34 @@ struct get_stop_token {
   }
 };
 
+template <typename Promise>
+struct cancel_awaiter {
+  Promise *m_promise;
+  bool await_ready() const noexcept {
+    return m_promise->m_cancel_handle_ctl.load(std::memory_order_relaxed);
+  }
+
+  auto await_suspend(const std::coroutine_handle<> &handle) noexcept {
+    m_promise->m_cancel_continuation = handle;
+
+    if (m_promise->m_cancel_handle_ctl.exchange(true,
+                                                std::memory_order_acq_rel)) {
+      return handle;
+    } else {
+      m_promise->m_stop_source.request_stop();
+    }
+
+    return m_promise->m_scheduler->get_next_coroutine();
+  }
+
+  void await_resume() const noexcept {}
+};
+
 struct Awaiter_Transforms {
   scheduler *m_scheduler{nullptr};
+  std::coroutine_handle<> m_cancel_continuation;
   std::stop_source m_stop_source;
+  std::atomic_bool m_cancel_handle_ctl{false};
   template <Resume_VIA A>
   A &await_transform(A &awaiter) {
     awaiter.via(m_scheduler);

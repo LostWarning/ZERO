@@ -37,12 +37,21 @@ async<int> loop(io *io, int socket_fd) {
   co_return 1;
 }
 
+async<void> waiter(auto &awaiter) {
+  std::cerr << "Waiter() Enter\n";
+  co_await awaiter;
+  std::cerr << "Waiter() Exit\n";
+}
+
 async<void> cancelable(io *io, int socket_fd) {
   auto loop1 = loop(io, socket_fd).schedule_on(co_await get_scheduler());
+  auto w     = waiter(loop1).schedule_on(co_await get_scheduler());
   std::cerr << "Sleepint for 5 sec\n";
   sleep(5);
   std::cerr << "Requesting cancel\n";
   co_await loop1.cancel();
+  std::cerr << "loop canceled\n";
+  co_await w;
 }
 
 launch<> start_accept(io *io) {

@@ -19,10 +19,7 @@ struct task_awaiter {
 
   constexpr Return await_resume() const noexcept { return m_promise->m_value; }
 
-  auto cancel() {
-    this->m_promise->m_stop_source.request_stop();
-    return *this;
-  }
+  auto cancel() { return cancel_awaiter<Promise>(m_promise); }
 };
 
 template <typename Promise>
@@ -38,10 +35,24 @@ struct task_awaiter<Promise, void> {
 
   constexpr void await_resume() const noexcept {}
 
-  auto cancel() {
-    this->m_promise->m_stop_source.request_stop();
-    return *this;
+  auto cancel() { return cancel_awaiter<Promise>(m_promise); }
+};
+
+template <typename Promise>
+struct task_final_awaiter {
+  Promise *m_promise;
+  constexpr bool await_ready() const noexcept { return false; }
+
+  std::coroutine_handle<>
+  await_suspend(const std::coroutine_handle<> &) noexcept {
+    if (m_promise->m_cancel_handle_ctl.exchange(true,
+                                                std::memory_order_relaxed)) {
+      m_promise->m_scheduler->schedule(m_promise->m_cancel_continuation);
+    }
+    return m_promise->m_continuation;
   }
+
+  constexpr void await_resume() const noexcept {}
 };
 
 template <typename Return = void>
@@ -51,19 +62,7 @@ struct task {
     Return m_value;
     std::suspend_always initial_suspend() const noexcept { return {}; }
     auto final_suspend() noexcept {
-      struct {
-        std::coroutine_handle<> &m_continuation;
-        constexpr bool await_ready() const noexcept { return false; }
-
-        std::coroutine_handle<>
-        await_suspend(const std::coroutine_handle<> &) noexcept {
-          return m_continuation;
-        }
-
-        constexpr void await_resume() const noexcept {}
-      } awaiter{m_continuation};
-
-      return awaiter;
+      return task_final_awaiter<promise_type>(this);
     }
 
     void return_value(const Return &value) noexcept {
@@ -97,10 +96,7 @@ struct task {
 
   void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
 
-  auto cancel() {
-    this->m_promise->m_stop_source.request_stop();
-    return task_awaiter<promise_type, Return>{m_promise};
-  }
+  auto cancel() { return cancel_awaiter<promise_type>(m_promise); }
 };
 
 template <>
@@ -109,19 +105,7 @@ struct task<void> {
     std::coroutine_handle<> m_continuation;
     std::suspend_always initial_suspend() const noexcept { return {}; }
     auto final_suspend() noexcept {
-      struct {
-        std::coroutine_handle<> &m_continuation;
-        constexpr bool await_ready() const noexcept { return false; }
-
-        std::coroutine_handle<>
-        await_suspend(const std::coroutine_handle<> &) noexcept {
-          return m_continuation;
-        }
-
-        constexpr void await_resume() const noexcept {}
-      } awaiter{m_continuation};
-
-      return awaiter;
+      return task_final_awaiter<promise_type>(this);
     }
 
     constexpr void return_void() const noexcept {}
@@ -153,10 +137,7 @@ struct task<void> {
 
   void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
 
-  auto cancel() {
-    this->m_promise->m_stop_source.request_stop();
-    return task_awaiter<promise_type, void>{m_promise};
-  }
+  auto cancel() { return cancel_awaiter<promise_type>(m_promise); }
 };
 
 #endif

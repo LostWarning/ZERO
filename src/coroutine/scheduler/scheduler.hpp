@@ -61,10 +61,10 @@ class scheduler {
   std::vector<thread_context *> m_thread_cxts;
 
   std::mutex m_task_mutex;
-  std::condition_variable m_task_cv;
 
   std::mutex m_spawn_thread_mutex;
   std::mutex m_global_task_queue_mutex;
+  std::atomic_flag m_task_wait_flag;
 
   bool m_stop_requested = false;
 

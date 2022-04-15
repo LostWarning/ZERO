@@ -19,9 +19,8 @@ scheduler::scheduler() {
 
 scheduler::~scheduler() {
   m_stop_requested = true;
-  std::unique_lock<std::mutex> lk(m_task_mutex);
-  m_task_cv.notify_all();
-  lk.unlock();
+  m_task_wait_flag.test_and_set(std::memory_order_relaxed);
+  m_task_wait_flag.notify_all();
   for (auto &t_cxt : this->m_thread_cxts) {
     if (t_cxt->m_thread.joinable())
       t_cxt->m_thread.join();
@@ -54,9 +53,8 @@ void scheduler::schedule(const std::coroutine_handle<> &handle) noexcept {
   } else [[likely]] {
     m_thread_cxts[m_thread_id]->m_tasks->enqueue(handle);
   }
-  if (m_total_ready_threads.load(std::memory_order_relaxed)) {
-    m_task_cv.notify_one();
-  }
+  m_task_wait_flag.test_and_set(std::memory_order_relaxed);
+  m_task_wait_flag.notify_one();
 }
 
 bool scheduler::peek_next_coroutine(std::coroutine_handle<> &handle) noexcept {
@@ -90,16 +88,16 @@ scheduler_task scheduler::awaiter() {
   while (!m_stop_requested) {
     std::coroutine_handle<> handle;
 
-    set_thread_status(thread_status::STATUS::READY);
     std::unique_lock<std::mutex> lk(m_task_mutex);
-    m_task_cv.wait(
-        lk, [&]() { return peek_next_coroutine(handle) || m_stop_requested; });
-    if (m_stop_requested) [[unlikely]] {
-      co_return;
+    while (!peek_next_coroutine(handle)) {
+      m_task_wait_flag.wait(false, std::memory_order_relaxed);
+      if (m_stop_requested) [[unlikely]] {
+        co_return;
+      }
+      m_task_wait_flag.clear(std::memory_order_relaxed);
     }
-
     lk.unlock();
-    set_thread_status(thread_status::STATUS::RUNNING);
+
     co_await thread_awaiter{handle};
   }
 }

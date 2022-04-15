@@ -29,7 +29,10 @@ Coroutine are function that can suspend execution and can be resumed later. This
     * [`recv`](#recv)
     * [`cancel`](#cancel)
     * [`timeout`](#timeout)
+    * [`delay`](#delay)
+    * [`poll`](#poll)
     * [`nop`](#nop)
+
 
 # Coroutine
 
@@ -138,3 +141,6 @@ Wrapper for io_uring to support cpp coroutine. io_service have a dedicated threa
 ### `nop`
 ### `timeout`
 ### `cancel`
+### `nop`
+### `delay`
+### `poll`

@@ -42,6 +42,29 @@ struct io_uring_op_nop_t : public io_uring_future {
   }
 };
 
+struct io_uring_op_poll_add_t : public io_uring_future {
+  int m_fd;
+  unsigned m_poll_mask;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_poll_add_t() = default;
+
+  io_uring_op_poll_add_t(const int &fd, const unsigned &poll_mask,
+                         unsigned char &sqe_flags)
+      : m_fd{fd}, m_poll_mask{poll_mask}, m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_poll_add(sqe, m_fd, m_poll_mask);
+    sqe->flags |= m_sqe_flags;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
 struct io_uring_op_cancel_t : public io_uring_future {
   void *m_user_data;
   int m_flags;
@@ -509,8 +532,9 @@ using io_uring_op =
                  io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
                  io_uring_op_read_provide_buffer_t, io_uring_op_write_fixed_t,
                  io_uring_op_writev_t, io_uring_op_nop_t, io_uring_op_send_t,
-                 io_uring_op_recv_provide_buffer_t, io_uring_op_readv_t,
+                 io_uring_op_recv_provide_buffer_t, io_uring_op_poll_add_t,
                  io_uring_op_provide_buffer_t, io_uring_op_read_fixed_t,
-                 io_uring_op_close_t, io_uring_op_cancel_t>;
+                 io_uring_op_readv_t, io_uring_op_close_t,
+                 io_uring_op_cancel_t>;
 
 #endif

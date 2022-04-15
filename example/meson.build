@@ -78,3 +78,12 @@ examples_generator = executable('generator', 'generator.cpp',
         io_lib
     ]
 )
+
+examples_poll = executable('poll', 'poll.cpp',
+    include_directories:[base_inc_dir],
+    dependencies : [thread,uring,atomic_dep],
+    link_with : [
+        scheduler_lib,
+        io_lib
+    ]
+)

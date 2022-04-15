@@ -16,6 +16,12 @@ public:
     return m_io_service->submit_io(io_uring_op_nop_t(sqe_flags));
   }
 
+  auto poll_add(const int &fd, const unsigned &poll_mask,
+                unsigned char sqe_flags = 0) -> uring_awaiter {
+    return m_io_service->submit_io(
+        io_uring_op_poll_add_t(fd, poll_mask, sqe_flags));
+  }
+
   auto cancel(uring_awaiter &awaiter, const int &flags,
               unsigned char sqe_flags = 0) -> uring_awaiter {
     return m_io_service->submit_io(

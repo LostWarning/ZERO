@@ -18,9 +18,8 @@ task<int> print_file(io_service &io) {
 
   auto link1 = io.link();
   // Wait for 5 sec
-  __kernel_timespec t;
-  t.tv_sec = 5;
-  link1.sleep(&t);
+
+  link1.delay(5, 0);
   auto rd1_awaiter = link1.read(fd1, buffer1, 128, 0);
   link1.close(fd1);
   auto rd2_awaiter = link1.read(fd2, buffer2, 256, 0);

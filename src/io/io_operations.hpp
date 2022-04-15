@@ -28,12 +28,8 @@ public:
     spec.it_interval.tv_nsec = 0;
     timerfd_settime(tfd, 0, &spec, NULL);
 
-    auto link = m_io_service->link();
-    link.poll_add(tfd, POLL_IN);
-    auto awaiter = link.close(tfd);
-    m_io_service->submit(link);
-
-    return std::move(awaiter);
+    poll_add(tfd, POLL_IN, sqe_flags | IOSQE_IO_HARDLINK);
+    return close(tfd, sqe_flags);
   }
 
   auto poll_add(const int &fd, const unsigned &poll_mask,
@@ -131,9 +127,9 @@ public:
     return m_io_service->submit_io(io_uring_op_close_t(fd, sqe_flags));
   }
 
-  auto sleep(__kernel_timespec *const &t, unsigned char sqe_flags = 0)
+  auto timeout(__kernel_timespec *const &t, unsigned char sqe_flags = 0)
       -> uring_awaiter {
-    return m_io_service->submit_io(io_uring_op_sleep_t(t, sqe_flags));
+    return m_io_service->submit_io(io_uring_op_timeout_t(t, sqe_flags));
   }
 
   auto provide_buffer(void *const addr, int buffer_length, int buffer_count,

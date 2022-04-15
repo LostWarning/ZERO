@@ -333,13 +333,13 @@ struct io_uring_op_write_fixed_t : public io_uring_future {
   }
 };
 
-struct io_uring_op_sleep_t : public io_uring_future {
+struct io_uring_op_timeout_t : public io_uring_future {
   __kernel_timespec *m_time;
   unsigned char m_sqe_flags;
 
-  io_uring_op_sleep_t() = default;
+  io_uring_op_timeout_t() = default;
 
-  io_uring_op_sleep_t(__kernel_timespec *const &t, unsigned char &sqe_flags)
+  io_uring_op_timeout_t(__kernel_timespec *const &t, unsigned char &sqe_flags)
       : m_time{t}, m_sqe_flags{sqe_flags} {}
 
   bool run(io_uring *const uring) {
@@ -527,14 +527,13 @@ struct io_uring_op_provide_buffer_t : public io_uring_future {
   }
 };
 
-using io_uring_op =
-    std::variant<io_uring_op_sleep_t, io_uring_op_openat_t, io_uring_op_read_t,
-                 io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
-                 io_uring_op_read_provide_buffer_t, io_uring_op_write_fixed_t,
-                 io_uring_op_writev_t, io_uring_op_nop_t, io_uring_op_send_t,
-                 io_uring_op_recv_provide_buffer_t, io_uring_op_poll_add_t,
-                 io_uring_op_provide_buffer_t, io_uring_op_read_fixed_t,
-                 io_uring_op_readv_t, io_uring_op_close_t,
-                 io_uring_op_cancel_t>;
+using io_uring_op = std::variant<
+    io_uring_op_timeout_t, io_uring_op_openat_t, io_uring_op_read_t,
+    io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
+    io_uring_op_read_provide_buffer_t, io_uring_op_write_fixed_t,
+    io_uring_op_writev_t, io_uring_op_nop_t, io_uring_op_send_t,
+    io_uring_op_recv_provide_buffer_t, io_uring_op_poll_add_t,
+    io_uring_op_provide_buffer_t, io_uring_op_read_fixed_t, io_uring_op_readv_t,
+    io_uring_op_close_t, io_uring_op_cancel_t>;
 
 #endif

@@ -16,8 +16,10 @@
 using io = io_service;
 
 char *send_buffer;
-char read_buffer[256][1024];
+char *read_buffer;
+
 size_t sb_len;
+size_t rb_len;
 
 int get_tcp_socket();
 
@@ -31,9 +33,7 @@ task<> fill_response_from_file(io *io) {
 async<> handle_client(int fd, io *io) {
 
   while (true) {
-    auto [r, bid] = co_await io->recv(fd, 1, 1024, 0);
-    bid           = io->get_buffer_index(bid);
-    io->provide_buffer(read_buffer[bid], 1024, 1, 1, bid);
+    auto r = co_await io->read_fixed(fd, read_buffer, rb_len, 0, 1);
     if (r <= 0) {
       co_await io->close(fd);
       co_return;
@@ -60,7 +60,6 @@ generator<int> get_connections(io *io, int socket_fd) {
 async<> server(io *io) {
   int socket_fd = get_tcp_socket();
   co_await fill_response_from_file(io);
-  co_await io->provide_buffer(read_buffer, 1024, 256, 1);
 
   auto connections = get_connections(io, socket_fd);
   std::stop_callback cb(co_await get_stop_token(),
@@ -87,11 +86,15 @@ int main(int argc, char **argv) {
   scheduler scheduler;
   io io(1000, 0);
 
+  rb_len      = 1024;
   send_buffer = new char[1024];
+  read_buffer = new char[rb_len];
 
-  iovec vec[1];
+  iovec vec[2];
   vec[0].iov_base = send_buffer;
   vec[0].iov_len  = 1024;
+  vec[1].iov_base = read_buffer;
+  vec[1].iov_len  = 1024;
 
   if (!io.register_buffer(vec)) {
     std::cerr << "Buffer Registeration failed\n";

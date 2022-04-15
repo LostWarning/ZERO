@@ -17,11 +17,7 @@ launch<> launch_coroutine(io_service *io) {
 
   int tfd = timerfd_create(CLOCK_REALTIME, 0);
 
-  itimerspec spec;
-  spec.it_value.tv_sec     = 5;
-  spec.it_value.tv_nsec    = 0;
-  spec.it_interval.tv_sec  = 0;
-  spec.it_interval.tv_nsec = 0;
+  itimerspec spec{{5, 0}, {0, 0}};
   timerfd_settime(tfd, 0, &spec, NULL);
 
   std::cerr << "Going to wait on timer_fd\n";
@@ -35,8 +31,7 @@ int main(int argc, char **argv) {
   scheduler schd;
   io_service io(100, 0);
 
-  auto cr = launch_coroutine(&io).schedule_on(&schd);
-  cr.join();
+  launch_coroutine(&io).schedule_on(&schd).join();
 
   return 0;
 }

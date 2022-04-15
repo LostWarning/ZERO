@@ -8,6 +8,8 @@ Coroutine are function that can suspend execution and can be resumed later. This
     * [`task<T>`](#taskt)
     * [`generator<T>`](#generatort)
     * [`async<T>`](#asynct)
+    * [`timer`](#timer)
+    * [`delayed`](#delayedt)
 
 * IO Features
     * [`Chain Request`](#chain-request)
@@ -111,6 +113,9 @@ int main(int, char **) {
 }
 ```
 ## `launch<T>`
+
+## `timer`
+## `delayed<T>`
 
 # Scheduler
 ## `scheduler`

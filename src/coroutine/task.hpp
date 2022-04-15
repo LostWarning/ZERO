@@ -61,8 +61,9 @@ struct task_final_awaiter {
   constexpr void await_resume() const noexcept {}
 };
 
-template <typename Return = void>
+template <typename Ret = void>
 struct task {
+  using Return = std::remove_reference<Ret>::type;
   struct promise_type : public Awaiter_Transforms {
     std::coroutine_handle<> m_continuation;
     Return m_value;
@@ -110,6 +111,7 @@ struct task {
 
 template <>
 struct task<void> {
+  using Return = void;
   struct promise_type : public Awaiter_Transforms {
     std::coroutine_handle<> m_continuation;
     std::suspend_always initial_suspend() const noexcept { return {}; }

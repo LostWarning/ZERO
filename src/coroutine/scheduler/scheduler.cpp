@@ -47,14 +47,14 @@ bool scheduler::steal_task(std::coroutine_handle<> &handle) noexcept {
 }
 
 void scheduler::schedule(const std::coroutine_handle<> &handle) noexcept {
-  if (m_coro_scheduler_id != m_id || m_thread_id == 0) [[unlikely]] {
+  if (m_coro_scheduler_id != m_id || m_thread_id == 0) {
     std::unique_lock lk(m_global_task_queue_mutex);
     m_thread_cxts[0]->m_tasks->enqueue(handle);
-  } else [[likely]] {
+  } else {
     m_thread_cxts[m_thread_id]->m_tasks->enqueue(handle);
   }
-  m_task_wait_flag.test_and_set(std::memory_order_relaxed);
-  m_task_wait_flag.notify_one();
+  if (!m_task_wait_flag.test_and_set(std::memory_order_relaxed))
+    m_task_wait_flag.notify_one();
 }
 
 bool scheduler::peek_next_coroutine(std::coroutine_handle<> &handle) noexcept {
@@ -88,15 +88,15 @@ scheduler_task scheduler::awaiter() {
   while (!m_stop_requested) {
     std::coroutine_handle<> handle;
 
-    std::unique_lock<std::mutex> lk(m_task_mutex);
     while (!peek_next_coroutine(handle)) {
+      std::unique_lock<std::mutex> lk(m_task_mutex);
       m_task_wait_flag.wait(false, std::memory_order_relaxed);
+      lk.unlock();
       if (m_stop_requested) [[unlikely]] {
         co_return;
       }
       m_task_wait_flag.clear(std::memory_order_relaxed);
     }
-    lk.unlock();
 
     co_await thread_awaiter{handle};
   }

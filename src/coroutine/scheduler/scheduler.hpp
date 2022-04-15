@@ -4,10 +4,10 @@
 #include "queue/work_stealing_queue.hpp"
 
 #include <atomic>
-#include <condition_variable>
 #include <coroutine>
 #include <functional>
 #include <mutex>
+#include <thread>
 #include <vector>
 
 using task_queue = work_stealing_queue<std::coroutine_handle<>>;
@@ -64,7 +64,7 @@ class scheduler {
 
   std::mutex m_spawn_thread_mutex;
   std::mutex m_global_task_queue_mutex;
-  std::atomic_flag m_task_wait_flag;
+  std::atomic_flag m_task_wait_flag = ATOMIC_FLAG_INIT;
 
   bool m_stop_requested = false;
 

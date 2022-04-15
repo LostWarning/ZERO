@@ -3,6 +3,7 @@
 
 #include "io_uring_op.hpp"
 
+#include <sys/timerfd.h>
 #include <vector>
 
 template <typename IO_SERVICE>
@@ -14,6 +15,25 @@ public:
 
   auto nop(unsigned char sqe_flags = 0) -> uring_awaiter {
     return m_io_service->submit_io(io_uring_op_nop_t(sqe_flags));
+  }
+
+  auto delay(const unsigned long &sec, const unsigned long &nsec,
+             unsigned char sqe_flags = 0) {
+
+    int tfd = timerfd_create(CLOCK_REALTIME, 0);
+    itimerspec spec;
+    spec.it_value.tv_sec     = sec;
+    spec.it_value.tv_nsec    = nsec;
+    spec.it_interval.tv_sec  = 0;
+    spec.it_interval.tv_nsec = 0;
+    timerfd_settime(tfd, 0, &spec, NULL);
+
+    auto link = m_io_service->link();
+    link.poll_add(tfd, POLL_IN);
+    auto awaiter = link.close(tfd);
+    m_io_service->submit(link);
+
+    return std::move(awaiter);
   }
 
   auto poll_add(const int &fd, const unsigned &poll_mask,

@@ -27,6 +27,8 @@ launch<> launch_coroutine(io_service *io) {
   std::cerr << "Going to wait on timer_fd\n";
   co_await io->poll_add(tfd, POLL_IN);
   std::cerr << "Poll Event received\n";
+
+  co_await io->delay(5, 0);
 }
 
 int main(int argc, char **argv) {

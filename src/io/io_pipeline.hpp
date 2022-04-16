@@ -5,14 +5,6 @@
 #include "queue/io_work_queue.hpp"
 #include "uring_data.hpp"
 
-#include <atomic>
-#include <iostream>
-#include <liburing.h>
-#include <linux/time_types.h>
-#include <sys/socket.h>
-#include <type_traits>
-#include <unistd.h>
-
 class io_op_pipeline {
   io_work_queue<io_uring_op> m_io_work_queue;
   io_uring_op m_overflow_work;
@@ -30,7 +22,7 @@ public:
     m_io_work_queue.bulk_enqueue(items);
   }
 
-  unsigned int init_io_uring_ops(io_uring *const uring) {
+  int init_io_uring_ops(io_uring *const uring) {
 
     auto submit_operation = [&uring](IO_URING_OP auto &&item) {
       return item.run(uring);
@@ -39,7 +31,7 @@ public:
     unsigned int completed = 0;
     if (m_has_overflow_work) {
       if (!std::visit(submit_operation, m_overflow_work)) {
-        std::cerr << "Queue Full\n";
+        return -1;
       } else {
         m_has_overflow_work = false;
         ++completed;
@@ -49,7 +41,7 @@ public:
     io_uring_op op;
     while (m_io_work_queue.dequeue(op)) {
       if (!std::visit(submit_operation, op)) {
-        std::cerr << "Queue Full\n";
+        return -1;
         m_overflow_work     = op;
         m_has_overflow_work = true;
       } else {

@@ -12,9 +12,6 @@
 #include <liburing/io_uring.h>
 #include <memory>
 
-// TODO: if io_uring_submit fails then the submission should start from the last
-// submitted queue to keep order of the linked requests
-
 class io_service : public io_operation<io_service> {
   static thread_local unsigned int m_thread_id;
   static thread_local uring_data::allocator *m_uio_data_allocator;
@@ -22,6 +19,8 @@ class io_service : public io_operation<io_service> {
 
   std::vector<io_op_pipeline *> m_io_queues;
   std::vector<uring_data::allocator *> m_uio_data_allocators;
+
+  std::atomic<io_op_pipeline *> m_io_queue_overflow{nullptr};
 
   io_uring m_uring;
 

@@ -41,6 +41,10 @@ void io_service::io_loop() noexcept {
     if (completed) {
       io_uring_cq_advance(&m_uring, completed);
     }
+    if (m_io_queue_overflow.load(std::memory_order_relaxed) != nullptr)
+        [[unlikely]] {
+      submit();
+    }
   }
   io_uring_queue_exit(&m_uring);
   return;
@@ -49,7 +53,7 @@ void io_service::io_loop() noexcept {
 bool io_service::io_queue_empty() const noexcept {
   bool is_empty = true;
   for (auto &q : this->m_io_queues) {
-    is_empty = is_empty && q->empty();
+    is_empty = is_empty & q->empty();
   }
   return is_empty;
 }
@@ -67,11 +71,26 @@ void io_service::setup_thread_context() {
 void io_service::submit() {
   while (!io_queue_empty() &&
          !m_io_sq_running.exchange(true, std::memory_order_seq_cst)) {
+    auto overflow_queue = m_io_queue_overflow.load(std::memory_order_relaxed);
+    if (overflow_queue != nullptr) [[unlikely]] {
+      int res = overflow_queue->init_io_uring_ops(&m_uring);
+      if (res >= 0) {
+        m_io_queue_overflow.store(nullptr, std::memory_order_relaxed);
+      } else {
+        return;
+      }
+    }
 
     unsigned int completed = 0;
     while (!io_queue_empty()) {
       for (auto &q : m_io_queues) {
-        completed += q->init_io_uring_ops(&m_uring);
+        int res = q->init_io_uring_ops(&m_uring);
+        if (res < 0) [[unlikely]] {
+          m_io_queue_overflow.store(q, std::memory_order_relaxed);
+          return;
+        } else {
+          completed += res;
+        }
       }
     }
     if (completed) {
@@ -96,38 +115,15 @@ void io_service::handle_completion(io_uring_cqe *cqe) {
 }
 
 void io_service::submit(io_batch<io_service> &batch) {
-  unsigned int completed = 0;
-  auto &operations       = batch.operations();
-  size_t op_count        = operations.size();
-  if (!m_io_sq_running.exchange(true, std::memory_order_relaxed)) {
-    for (auto &op : operations) {
-      if (std::visit(
-              [&](IO_URING_OP auto &&item) { return item.run(&m_uring); },
-              op)) {
-        ++completed;
-      }
-    }
-    if (completed) {
-      io_uring_submit(&m_uring);
-    }
-    m_io_sq_running.store(false, std::memory_order_relaxed);
-  }
-  if (completed != operations.size()) {
-    for (size_t i = completed; i < op_count; ++i) {
-      m_io_queue->enqueue(operations[i]);
-    }
-  }
+  m_io_queue->enqueue(batch.operations());
   submit();
 }
 
 void io_service::submit(io_link<io_service> &io_link) {
   auto &operations = io_link.operations();
-  size_t op_count  = operations.size();
-  if (op_count == 0) {
-    return;
-  }
+  size_t op_count  = operations.size() - 1;
 
-  for (size_t i = 0; i < op_count - 1; ++i) {
+  for (size_t i = 0; i < op_count; ++i) {
     std::visit([](auto &&op) { op.m_sqe_flags |= IOSQE_IO_HARDLINK; },
                operations[i]);
   }

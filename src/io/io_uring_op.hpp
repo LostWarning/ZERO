@@ -558,13 +558,15 @@ struct io_uring_op_provide_buffer_t : public io_uring_future {
   }
 };
 
-using io_uring_op = std::variant<
-    io_uring_op_timeout_t, io_uring_op_openat_t, io_uring_op_read_t,
-    io_uring_op_write_t, io_uring_op_recv_t, io_uring_op_accept_t,
-    io_uring_op_read_provide_buffer_t, io_uring_op_write_fixed_t,
-    io_uring_op_writev_t, io_uring_op_nop_t, io_uring_op_send_t,
-    io_uring_op_recv_provide_buffer_t, io_uring_op_poll_add_t,
-    io_uring_op_provide_buffer_t, io_uring_op_read_fixed_t, io_uring_op_readv_t,
-    io_uring_op_close_t, io_uring_op_cancel_t>;
+using io_uring_op =
+    std::variant<io_uring_op_timeout_t, io_uring_op_openat_t,
+                 io_uring_op_read_t, io_uring_op_close_t, io_uring_op_cancel_t,
+                 io_uring_op_statx_t, io_uring_op_write_t, io_uring_op_recv_t,
+                 io_uring_op_accept_t, io_uring_op_read_provide_buffer_t,
+                 io_uring_op_write_fixed_t, io_uring_op_writev_t,
+                 io_uring_op_nop_t, io_uring_op_send_t,
+                 io_uring_op_recv_provide_buffer_t, io_uring_op_poll_add_t,
+                 io_uring_op_provide_buffer_t, io_uring_op_read_fixed_t,
+                 io_uring_op_readv_t>;
 
 #endif

@@ -35,10 +35,11 @@ bool scheduler::steal_task(std::coroutine_handle<> &handle) noexcept {
     c              = false;
     unsigned int i = (m_thread_id + 1) % (total_threads + 1);
     do {
-      if (m_thread_cxts[i]->m_tasks->steal(handle)) {
+      task_queue *queue = m_thread_cxts[i]->m_tasks;
+      if (queue->steal(handle)) {
         return true;
       }
-      c = c || !m_thread_cxts[i]->m_tasks->empty();
+      c = c || !queue->empty();
       i = (i + 1) % (total_threads + 1);
     } while (i != m_thread_id);
   } while (c);

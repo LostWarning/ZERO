@@ -222,7 +222,6 @@ async<void> timer(io_service *io, itimerspec spec, Awaitable awaitable) {
   std::stop_callback scb(st, [&] { io->close(tfd); });
 
   while (!st.stop_requested()) {
-    std::cerr << "Waiting for timer to trigger\n";
     unsigned long u;
     co_await io->read(tfd, &u, sizeof(u), 0);
     co_await awaitable();

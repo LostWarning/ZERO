@@ -19,6 +19,8 @@ launch<> coroutine_2(io_service *io) {
              std::cerr << "Hello World\n";
              co_return;
            }).schedule_on(co_await get_scheduler());
+
+  co_await t;
 }
 
 int main(int, char **) {

@@ -75,10 +75,18 @@ struct async_final_suspend {
       m_promise->m_cancel_scheduler->schedule(m_promise->m_cancel_continuation);
     }
 
+    std::coroutine_handle<> continuation;
     if (m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
-      m_promise->m_continuation_scheduler->schedule(m_promise->m_continuation);
+      if (m_promise->m_continuation_scheduler == m_promise->m_scheduler) {
+        continuation = m_promise->m_continuation;
+      } else {
+        m_promise->m_continuation_scheduler->schedule(
+            m_promise->m_continuation);
+        continuation = m_promise->m_scheduler->get_next_coroutine();
+      }
+    } else {
+      continuation = m_promise->m_scheduler->get_next_coroutine();
     }
-    auto continuation = m_promise->m_scheduler->get_next_coroutine();
 
     if (m_promise->m_destroy_ctl.exchange(true, std::memory_order_relaxed)) {
       handle.destroy();

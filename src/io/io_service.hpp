@@ -15,10 +15,6 @@
 // TODO: if io_uring_submit fails then the submission should start from the last
 // submitted queue to keep order of the linked requests
 
-// TODO: For each thread that access io_service an allocator and io_queue is
-// created for it, this will end up in creating lot of allocators and queue.
-// Need to find a solution for reusing the resource or deleting it if not in use
-
 class io_service : public io_operation<io_service> {
   static thread_local unsigned int m_thread_id;
   static thread_local uring_data::allocator *m_uio_data_allocator;
@@ -40,6 +36,7 @@ class io_service : public io_operation<io_service> {
 
 public:
   io_service(const u_int &entries, const u_int &flags);
+  io_service(const u_int &entries, io_uring_params &params);
 
   ~io_service();
 

@@ -10,6 +10,12 @@ io_service::io_service(const u_int &entries, const u_int &flags)
   m_io_cq_thread = std::move(std::thread([&] { this->io_loop(); }));
 }
 
+io_service::io_service(const u_int &entries, io_uring_params &params)
+    : io_operation(this), m_entries(entries) {
+  io_uring_queue_init_params(entries, &m_uring, &params);
+  m_io_cq_thread = std::move(std::thread([&] { this->io_loop(); }));
+}
+
 io_service::~io_service() {
   m_stop_requested.store(true, std::memory_order_relaxed);
   nop(IOSQE_IO_DRAIN);

@@ -12,11 +12,6 @@ concept Resume_VIA = requires(T a, scheduler *s) {
 };
 
 template <typename T>
-concept Schedule_ON = requires(T a, scheduler *s) {
-  {a.schedule_on(s)};
-};
-
-template <typename T>
 concept Task = requires(T a, scheduler *s) {
   {a.set_scheduler(s)};
 };
@@ -75,18 +70,6 @@ struct Awaiter_Transforms {
   template <Resume_VIA A>
   A &&await_transform(A &&awaiter) {
     awaiter.via(m_scheduler);
-    return std::move(awaiter);
-  }
-
-  template <Schedule_ON A>
-  A &await_transform(A &awaiter) {
-    awaiter.schedule_on(m_scheduler);
-    return awaiter;
-  }
-
-  template <Schedule_ON A>
-  A &&await_transform(A &&awaiter) {
-    awaiter.schedule_on(m_scheduler);
     return std::move(awaiter);
   }
 

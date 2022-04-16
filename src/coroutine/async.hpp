@@ -32,6 +32,8 @@ struct async_awaiter {
     m_promise->m_stop_source.request_stop();
     return cancel_awaiter<Promise>(m_promise);
   }
+
+  void via(scheduler *s) { this->m_promise->m_continuation_scheduler = s; }
 };
 
 template <typename Promise>
@@ -56,6 +58,8 @@ struct async_awaiter<Promise, void> {
     m_promise->m_stop_source.request_stop();
     return cancel_awaiter<Promise>(m_promise);
   }
+
+  void via(scheduler *s) { this->m_promise->m_continuation_scheduler = s; }
 };
 
 template <typename Promise>
@@ -71,10 +75,10 @@ struct async_final_suspend {
       m_promise->m_cancel_scheduler->schedule(m_promise->m_cancel_continuation);
     }
 
-    auto continuation =
-        m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)
-            ? m_promise->m_continuation
-            : m_promise->m_scheduler->get_next_coroutine();
+    if (m_promise->m_handle_ctl.exchange(true, std::memory_order_acq_rel)) {
+      m_promise->m_continuation_scheduler->schedule(m_promise->m_continuation);
+    }
+    auto continuation = m_promise->m_scheduler->get_next_coroutine();
 
     if (m_promise->m_destroy_ctl.exchange(true, std::memory_order_relaxed)) {
       handle.destroy();
@@ -145,6 +149,15 @@ struct async {
     return async_awaiter<promise_type, Return>{m_promise};
   }
 
+  void via(scheduler *s) {
+    this->m_promise->m_continuation_scheduler = s;
+    if (this->m_promise->m_scheduler == nullptr) {
+      this->m_promise->m_scheduler = s;
+      s->schedule(
+          std::coroutine_handle<promise_type>::from_promise(*m_promise));
+    }
+  }
+
   auto cancel() {
     m_promise->m_stop_source.request_stop();
     return cancel_awaiter<promise_type>(m_promise);
@@ -156,6 +169,7 @@ struct async<void> {
   using Return = void;
   struct promise_type : public Awaiter_Transforms {
     std::coroutine_handle<> m_continuation;
+    scheduler *m_continuation_scheduler{nullptr};
     std::atomic_bool m_handle_ctl{false};
     std::atomic_bool m_destroy_ctl{false};
 
@@ -209,6 +223,15 @@ struct async<void> {
   auto cancel() {
     m_promise->m_stop_source.request_stop();
     return cancel_awaiter<promise_type>(m_promise);
+  }
+
+  void via(scheduler *s) {
+    this->m_promise->m_continuation_scheduler = s;
+    if (this->m_promise->m_scheduler == nullptr) {
+      this->m_promise->m_scheduler = s;
+      s->schedule(
+          std::coroutine_handle<promise_type>::from_promise(*m_promise));
+    }
   }
 };
 

@@ -5,15 +5,29 @@
 
 #include <atomic>
 
+/* A first in first out lock free data structure
+ */
+
 template <typename T>
 class io_work_queue {
 
+  // Front of the queue
   std::atomic<size_t> m_front;
+
+  // Back of the queue
   std::atomic<size_t> m_back;
+
+  // Current buffer used for storing data
   std::atomic<circular_array<T> *> m_data{nullptr};
+
+  /* Old buffer that was used for store data.
+   * Keep the old one just in-case some thread is dequeuing when new buffer is
+   * being created.
+   */
   std::atomic<circular_array<T> *> m_old{nullptr};
 
 public:
+  // Create a io_work_queue with size capacity (capacity should be power of 2)
   explicit io_work_queue(size_t capacity) {
     m_front.store(0, std::memory_order_relaxed);
     m_back.store(0, std::memory_order_relaxed);
@@ -25,17 +39,22 @@ public:
     delete m_old.load(std::memory_order_relaxed);
   }
 
+  // Check the io_work_queue is empty.
   bool empty() const noexcept {
     size_t back  = m_back.load(std::memory_order_relaxed);
     size_t front = m_front.load(std::memory_order_relaxed);
     return back == front;
   }
 
+  /* Add a new item to back of the queue. If the queue is full expand the queue
+   * to next power of 2
+   */
   void enqueue(T &&item) {
     size_t back             = m_back.load(std::memory_order_relaxed);
     size_t front            = m_front.load(std::memory_order_acquire);
     circular_array<T> *data = m_data.load(std::memory_order_relaxed);
 
+    // Check the queue is full and resize the array.
     if (data->size() - 1 < static_cast<size_t>(back - front)) [[unlikely]] {
       if (back < front) {
         size_t a  = 0;
@@ -52,6 +71,9 @@ public:
     m_back.store(back + 1, std::memory_order_release);
   }
 
+  /* Add a new items to back of the queue. If the queue is full expand the queue
+   * to next power of 2
+   */
   void bulk_enqueue(std::vector<T> &items) {
     size_t items_count      = items.size();
     size_t back             = m_back.load(std::memory_order_relaxed);
@@ -76,6 +98,8 @@ public:
     m_back.store(back + 1 + items_count, std::memory_order_release);
   }
 
+  /* Pop an item from front of the queue.
+   */
   bool dequeue(T &item) {
 
     size_t back  = m_back.load(std::memory_order_relaxed);

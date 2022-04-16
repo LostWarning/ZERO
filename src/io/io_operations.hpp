@@ -127,6 +127,12 @@ public:
     return m_io_service->submit_io(io_uring_op_close_t(fd, sqe_flags));
   }
 
+  auto statx(int dfd, const char *path, int flags, unsigned mask,
+             struct statx *statxbuf, unsigned char sqe_flags = 0) {
+    return m_io_service->submit_io(
+        io_uring_op_statx_t(dfd, path, flags, mask, statxbuf, sqe_flags));
+  }
+
   auto timeout(__kernel_timespec *const &t, unsigned char sqe_flags = 0)
       -> uring_awaiter {
     return m_io_service->submit_io(io_uring_op_timeout_t(t, sqe_flags));

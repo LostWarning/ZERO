@@ -494,6 +494,37 @@ struct io_uring_op_close_t : public io_uring_future {
   }
 };
 
+struct io_uring_op_statx_t : public io_uring_future {
+  int m_dfd;
+  const char *m_path;
+  int m_flags;
+  unsigned m_mask;
+  struct statx *m_statxbuf;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_statx_t() = default;
+
+  io_uring_op_statx_t(int dfd, const char *path, int flags, unsigned mask,
+                      struct statx *statxbuf, unsigned char &sqe_flags)
+      : m_dfd{dfd}
+      , m_path{path}
+      , m_flags{flags}
+      , m_mask{mask}
+      , m_statxbuf{statxbuf}
+      , m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_statx(sqe, m_dfd, m_path, m_flags, m_mask, m_statxbuf);
+    sqe->flags |= m_sqe_flags;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
 struct io_uring_op_provide_buffer_t : public io_uring_future {
   void *m_addr;
   int m_buffer_length;

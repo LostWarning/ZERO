@@ -17,7 +17,7 @@ launch<> launch_coroutine(io_service *io) {
 
   int tfd = timerfd_create(CLOCK_REALTIME, 0);
 
-  itimerspec spec{{5, 0}, {0, 0}};
+  itimerspec spec{{5, 0}, {5, 0}};
   timerfd_settime(tfd, 0, &spec, NULL);
 
   std::cerr << "Going to wait on timer_fd\n";

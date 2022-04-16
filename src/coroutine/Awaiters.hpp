@@ -62,6 +62,7 @@ struct cancel_awaiter {
 
 struct Awaiter_Transforms {
   scheduler *m_scheduler{nullptr};
+  scheduler *m_cancel_scheduler{nullptr};
   std::coroutine_handle<> m_cancel_continuation;
   std::stop_source m_stop_source;
   std::atomic_bool m_cancel_handle_ctl{false};
@@ -119,6 +120,18 @@ struct Awaiter_Transforms {
   get_stop_token &&await_transform(get_stop_token &&st) {
     st.m_stop_source = &m_stop_source;
     return std::move(st);
+  }
+
+  template <typename T>
+  cancel_awaiter<T> &await_transform(cancel_awaiter<T> &ca) {
+    ca.m_promise->m_cancel_scheduler = m_scheduler;
+    return ca;
+  }
+
+  template <typename T>
+  cancel_awaiter<T> &&await_transform(cancel_awaiter<T> &&ca) {
+    ca.m_promise->m_cancel_scheduler = m_scheduler;
+    return std::move(ca);
   }
 
   template <typename Default>

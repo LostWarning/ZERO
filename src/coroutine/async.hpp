@@ -68,7 +68,7 @@ struct async_final_suspend {
 
     if (m_promise->m_cancel_handle_ctl.exchange(true,
                                                 std::memory_order_acquire)) {
-      m_promise->m_scheduler->schedule(m_promise->m_cancel_continuation);
+      m_promise->m_cancel_scheduler->schedule(m_promise->m_cancel_continuation);
     }
 
     auto continuation =
@@ -91,6 +91,7 @@ struct async {
   using Return = std::remove_reference<Ret>::type;
   struct promise_type : public Awaiter_Transforms {
     Return m_value;
+    scheduler *m_continuation_scheduler{nullptr};
     std::coroutine_handle<> m_continuation;
     std::atomic_bool m_handle_ctl{false};
     std::atomic_bool m_destroy_ctl{false};

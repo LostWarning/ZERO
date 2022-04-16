@@ -53,7 +53,7 @@ struct task_final_awaiter {
   await_suspend(const std::coroutine_handle<> &) noexcept {
     if (m_promise->m_cancel_handle_ctl.exchange(true,
                                                 std::memory_order_acquire)) {
-      m_promise->m_scheduler->schedule(m_promise->m_cancel_continuation);
+      m_promise->m_cancel_scheduler->schedule(m_promise->m_cancel_continuation);
     }
     return m_promise->m_continuation;
   }

@@ -28,7 +28,7 @@ struct generator_final_suspend {
   await_suspend(const std::coroutine_handle<> &) const noexcept {
     if (m_promise->m_cancel_handle_ctl.exchange(true,
                                                 std::memory_order_relaxed)) {
-      m_promise->m_scheduler->schedule(m_promise->m_cancel_continuation);
+      m_promise->m_cancel_scheduler->schedule(m_promise->m_cancel_continuation);
     }
     return m_promise->m_continuation;
   }

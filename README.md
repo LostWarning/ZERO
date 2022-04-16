@@ -1,16 +1,19 @@
 # SMP
-This project is aimed at creating a cpp coroutine framework including coroutine compactable io_service based on io_uring and a work stealing scheduler for scheduling the coroutine.
+This project is aimed at creating a cpp coroutine framework including io_service based on io_uring and a work stealing scheduler for scheduling the coroutine.
 
 Coroutine are function that can suspend execution and can be resumed later. This allow us to write programs where a thread dont have to wait for a result instead it can suspend the current coroutine and start executing another one and resume it once the result is available.
 
-* Coroutine
+* Coroutine Types
     * [`launch<T>`](#launcht)
     * [`task<T>`](#taskt)
     * [`generator<T>`](#generatort)
     * [`async<T>`](#asynct)
-    * [`timer`](#timer)
-    * [`delayed`](#delayedt)
 
+* Coroutine Features
+    * [`delayed<T>`](#delayedt)
+    * [`timer`](#timer)
+    * [`cancel`](#cancel)
+    * [`schedule_on`](#scheduleon)
 * IO Features
     * [`Chain Request`](#chain-request)
     * [`Batch Operation`](#batch-operation)
@@ -29,7 +32,7 @@ Coroutine are function that can suspend execution and can be resumed later. This
     * [`accept`](#accept)
     * [`send`](#send)
     * [`recv`](#recv)
-    * [`cancel`](#cancel)
+    * [`cancel`](#cancel-1)
     * [`timeout`](#timeout)
     * [`delay`](#delay)
     * [`poll`](#poll)
@@ -116,6 +119,10 @@ int main(int, char **) {
 
 ## `timer`
 ## `delayed<T>`
+
+## `cancel`
+
+## `schedule_on`
 
 # Scheduler
 ## `scheduler`

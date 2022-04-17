@@ -354,6 +354,29 @@ struct io_uring_op_timeout_t : public io_uring_future {
   }
 };
 
+struct io_uring_op_link_timeout_t : public io_uring_future {
+  __kernel_timespec *m_time;
+  unsigned m_flags;
+  unsigned char m_sqe_flags;
+
+  io_uring_op_link_timeout_t() = default;
+
+  io_uring_op_link_timeout_t(__kernel_timespec *const &t, const unsigned flags,
+                             unsigned char &sqe_flags)
+      : m_time{t}, m_flags{flags}, m_sqe_flags{sqe_flags} {}
+
+  bool run(io_uring *const uring) {
+    io_uring_sqe *sqe;
+    if ((sqe = io_uring_get_sqe(uring)) == nullptr) {
+      return false;
+    }
+    io_uring_prep_link_timeout(sqe, m_time, m_flags);
+    sqe->flags |= m_sqe_flags;
+    io_uring_sqe_set_data(sqe, m_data);
+    return true;
+  }
+};
+
 struct io_uring_op_recv_t : public io_uring_future {
   int m_fd;
   void *m_buffer;
@@ -567,6 +590,6 @@ using io_uring_op =
                  io_uring_op_nop_t, io_uring_op_send_t,
                  io_uring_op_recv_provide_buffer_t, io_uring_op_poll_add_t,
                  io_uring_op_provide_buffer_t, io_uring_op_read_fixed_t,
-                 io_uring_op_readv_t>;
+                 io_uring_op_readv_t, io_uring_op_link_timeout_t>;
 
 #endif

@@ -102,7 +102,7 @@ struct generator {
     return generator_future<promise_type, Ret>{m_promise};
   }
 
-  void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
+  void via(scheduler *s) { this->m_promise->m_scheduler = s; }
 
   auto cancel() {
     this->m_promise->m_stop_source.request_stop();

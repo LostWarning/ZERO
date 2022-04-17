@@ -101,7 +101,7 @@ struct task {
     return task_awaiter<promise_type, Return>{m_promise};
   }
 
-  void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
+  void via(scheduler *s) { this->m_promise->m_scheduler = s; }
 
   auto cancel() {
     m_promise->m_stop_source.request_stop();
@@ -146,7 +146,7 @@ struct task<void> {
     return task_awaiter<promise_type, void>{m_promise};
   }
 
-  void set_scheduler(scheduler *s) { this->m_promise->m_scheduler = s; }
+  void via(scheduler *s) { this->m_promise->m_scheduler = s; }
 
   auto cancel() {
     m_promise->m_stop_source.request_stop();

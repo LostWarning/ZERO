@@ -95,7 +95,7 @@ public:
     for (size_t i = 0; i < items_count; ++i) {
       data->push(back + i, items[i]);
     }
-    m_back.store(back + 1 + items_count, std::memory_order_release);
+    m_back.store(back + items_count, std::memory_order_release);
   }
 
   /* Pop an item from front of the queue.

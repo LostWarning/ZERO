@@ -39,7 +39,7 @@ bool scheduler::steal_task(std::coroutine_handle<> &handle) noexcept {
       if (queue->steal(handle)) {
         return true;
       }
-      c = c || !queue->empty();
+      c = c | !queue->empty();
       i = (i + 1) % (total_threads + 1);
     } while (i != m_thread_id);
   } while (c);
@@ -48,7 +48,7 @@ bool scheduler::steal_task(std::coroutine_handle<> &handle) noexcept {
 }
 
 void scheduler::schedule(const std::coroutine_handle<> &handle) noexcept {
-  if (m_coro_scheduler_id != m_id || m_thread_id == 0) {
+  if (!m_thread_id | (m_coro_scheduler_id != m_id)) {
     std::unique_lock lk(m_global_task_queue_mutex);
     m_thread_cxts[0]->m_tasks->enqueue(handle);
   } else {

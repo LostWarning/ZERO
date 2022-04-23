@@ -65,4 +65,6 @@ async<Return> delayed(io_service *io, unsigned long sec, unsigned long nsec,
   co_await io->close(tfd);
   co_return func();
 }
+
+async<> delay(io_service *io, unsigned long sec, unsigned long nsec);
 #endif

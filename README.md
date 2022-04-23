@@ -10,6 +10,7 @@ Coroutine are function that can suspend execution and can be resumed later. This
     * [`async<T>`](#asynct)
 
 * Coroutine Features
+    * [`delay`](#delay)
     * [`delayed<T>`](#delayedt)
     * [`timer`](#timer)
     * [`cancel`](#cancel)
@@ -42,23 +43,49 @@ Coroutine are function that can suspend execution and can be resumed later. This
 
 
 # Coroutine
-
+Coroutines in this framework use a threadpool managed by the scheduler. There can be more than one scheduler at a time running different coroutines. Coroutines are designed such that when a coroutine is resumed it resumes on the scheduler that it started on but it may not be on the same thread.
 ## `launch<T>`
+`launch` is used when we want to start our coroutine from a regular function. It is the entry point for our coroutines. `launch` require a scheduler to start running it is passed through `schedule_on` member function. When return type of `launch` is `void` the it will have a join member function to wait for its completion if not it will have a convertion operator which will cause the thread to wait till the result is available.
+```c++
+#include "coroutine/launch.hpp"
+#include "coroutine/scheduler/scheduler.hpp"
+
+launch<> hello() {
+  std::cout << "Hello Coroutine\n";
+  co_return;
+}
+
+launch<int> add(int a, int b) { co_return a + b; }
+
+int main(int argc, char **argv) {
+  scheduler schd;
+
+  auto cr1 = hello().schedule_on(&schd); // Run coroutine on the scheduler
+  cr1.join();                            // Wait for the coroutine finish
+
+  // When returning a value we can use convertion operator to wait and get the
+  // value
+  int cr2 = add(10, 20).schedule_on(&schd);
+  std::cout << cr2 << std::endl;
+
+  return 0;
+}
+```
 
 ## `task<T>`
-A task is one of the basic coroutine type. When a task is created it is suspended initially and return an awaiter to the caller. To run this task we have to co_await the awaiter. When the task is co_awaited the calling coroutine is suspended and the task is resumed and the calling coroutine is set as a continuation of the task, so when the task completes it can resume the suspended coroutine.
-```
+A `task` is one of the basic coroutine type. When a task is created it is suspended initially and return an awaiter to the caller. To run this task we have to co_await it. When the task is co_awaited the calling coroutine is suspended and the task is resumed and the calling coroutine is set as a continuation of the task, so when the task completes it can resume the suspended coroutine.
+```c++
 #include "coroutine/launch.hpp"
 #include "coroutine/scheduler/scheduler.hpp"
 #include "coroutine/task.hpp"
 #include "io/io_service.hpp"
-#include <fcntl.h>
 
 task<int> print_file(io_service &io, const std::string &filename) {
   char buffer[128]{0};
   int dir = open(".", 0);
   int fd  = co_await io.openat(dir, filename.c_str(), 0, 0);
   int len = co_await io.read(fd, buffer, 128, 0);
+  int ret = co_await io.close(fd);
   std::cout << buffer << std::endl;
   co_return len;
 }
@@ -80,13 +107,11 @@ int main(int, char **) {
 
 ## `async<T>`
 async coroutine start in suspended state. It can then be scheduled to run asynchronously by passing a scheduler to `schedule_on` member function or by `co_await`. When using `co_await` the scheduler used for current coroutine is used to schedule the `async`.
-```
+```c++
 #include "coroutine/async.hpp"
 #include "coroutine/launch.hpp"
 #include "coroutine/scheduler/scheduler.hpp"
 #include "io/io_service.hpp"
-#include <fcntl.h>
-#include <string.h>
 
 async<int> print_file(io_service &io, int dir, const std::string filename) {
   char buffer[256]{0};
@@ -121,6 +146,9 @@ int main(int, char **) {
 ```
 
 ## `timer`
+
+## `delay`
+
 ## `delayed<T>`
 
 ## `cancel`

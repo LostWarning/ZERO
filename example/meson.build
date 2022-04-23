@@ -86,3 +86,11 @@ examples_timer = executable('timer', 'timer.cpp',
         smp_lib
     ]
 )
+
+examples_launch = executable('launch', 'launch.cpp',
+    include_directories:[base_inc_dir],
+    dependencies : [thread,uring,atomic_dep],
+    link_with : [
+        smp_lib
+    ]
+)

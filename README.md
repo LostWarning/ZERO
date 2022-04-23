@@ -1,4 +1,4 @@
-# SMP
+# ZERO
 This project is aimed at creating a cpp coroutine framework including io_service based on io_uring and a work stealing scheduler for scheduling the coroutine.
 
 Coroutine are function that can suspend execution and can be resumed later. This allow us to write programs where a thread dont have to wait for a result instead it can suspend the current coroutine and start executing another one and resume it once the result is available.
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
   scheduler schd;
 
   auto cr1 = hello().schedule_on(&schd); // Run coroutine on the scheduler
-  cr1.join();                            // Wait for the coroutine finish
+  cr1.join();                            // Wait for the coroutine to finish
 
   // When returning a value we can use convertion operator to wait and get the
   // value
@@ -104,6 +104,36 @@ int main(int, char **) {
 }
 ```
 ## `generator<T>`
+generator type allow us to yield a value and suspend the coroutine without exiting it. This allow us to resume to coroutine from where it is suspended.
+```c++
+#include "coroutine/generator.hpp"
+#include "coroutine/launch.hpp"
+#include "coroutine/scheduler/scheduler.hpp"
+
+// Generate integers from zero
+generator<int> integers() {
+  int i   = 0;
+  while (true) {
+    co_yield i++;
+  }
+}
+
+// Display an infinite number of integers
+launch<int> launch_coroutine() {
+  auto ints = integers();
+  while (true) {
+    std::cout << co_await ints << std::endl;
+  }
+  co_return 1;
+}
+
+int main(int argc, char **argv) {
+  scheduler schd;
+  int a = launch_coroutine().schedule_on(&schd);
+
+  return 0;
+}
+```
 
 ## `async<T>`
 async coroutine start in suspended state. It can then be scheduled to run asynchronously by passing a scheduler to `schedule_on` member function or by `co_await`. When using `co_await` the scheduler used for current coroutine is used to schedule the `async`.

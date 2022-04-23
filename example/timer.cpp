@@ -1,3 +1,4 @@
+#include "coroutine/timer.hpp"
 #include "coroutine/async.hpp"
 #include "coroutine/launch.hpp"
 #include "coroutine/scheduler/scheduler.hpp"
@@ -10,15 +11,19 @@ async<int> print() {
 }
 
 launch<> coroutine_2(io_service *io) {
-  int a = co_await delayed<int>(io, 5, 0, [] { return 101; });
+  std::cerr << "Calling delayed\n";
+  int a = co_await delayed<int>(io, 5, 0, [] {
+    std::cerr << "Run delayed task\n";
+    return 101;
+  });
   std::cout << a << std::endl;
 
   co_await delayed(io, 5, 0, print());
 
   auto t = timer(io, {{1, 0}, {5, 0}}, []() -> async<> {
-             std::cerr << "Hello World\n";
-             co_return;
-           }).schedule_on(co_await get_scheduler());
+    std::cerr << "Hello World\n";
+    co_return;
+  });
 
   co_await t;
 }

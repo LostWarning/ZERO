@@ -1,5 +1,5 @@
 smp_src = [
-    'coroutine/async.cpp',
+    'coroutine/timer.cpp',
     'coroutine/scheduler/scheduler.cpp',
     'io/io_service.cpp'
     ]

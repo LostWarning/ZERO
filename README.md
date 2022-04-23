@@ -43,6 +43,8 @@ Coroutine are function that can suspend execution and can be resumed later. This
 
 # Coroutine
 
+## `launch<T>`
+
 ## `task<T>`
 A task is one of the basic coroutine type. When a task is created it is suspended initially and return an awaiter to the caller. To run this task we have to co_await the awaiter. When the task is co_awaited the calling coroutine is suspended and the task is resumed and the calling coroutine is set as a continuation of the task, so when the task completes it can resume the suspended coroutine.
 ```
@@ -117,7 +119,6 @@ int main(int, char **) {
   return 0;
 }
 ```
-## `launch<T>`
 
 ## `timer`
 ## `delayed<T>`

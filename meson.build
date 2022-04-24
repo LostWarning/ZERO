@@ -1,5 +1,5 @@
 # Project base settings
-project('SMP', 'cpp',
+project('ZERO', 'cpp',
     version : '0.1',
     default_options : ['warning_level=3',
                      'cpp_std=gnu++2a'])

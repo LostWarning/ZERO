@@ -182,6 +182,55 @@ int main(int, char **) {
 ## `delayed<T>`
 
 ## `cancel`
+Coroutines support cooperative cancelation such that once a cancelation is requested the coroutine can decided to cancel it or not. It is implemented using `stop_token` so callbacks can be registered when the cancel request is recieved.
+```c++
+
+// This coroutine will suspend untill a connection is received and yield the connection fd.
+generator<int> get_connections(io *io, int socket_fd) {
+  // Get a stop_token for this coroutine.
+  auto st = co_await get_stop_token();
+  while (!st.stop_requested()) {  // Run untill a cancel is requested.
+    sockaddr_in client_addr;
+    socklen_t client_length;
+
+    // Submit an io request for accepting a connection.
+    auto awaiter =
+        io->accept(socket_fd, (sockaddr *)&client_addr, &client_length, 0);
+
+    // Register a stop_callback for this coroutine.
+    std::stop_callback sc(st, [&] { io->cancel(awaiter, 0); });
+
+    // Suspend this coroutine till a connection is received and yield the connection fd.
+    co_yield co_await awaiter;
+  }
+  co_yield 0;
+}
+
+async<> server(io *io) {
+  int socket_fd = get_tcp_socket();
+
+  // Get a connection generator
+  auto connections = get_connections(io, socket_fd);
+
+  // Cancel the get_connection coroutine if this coroutine receives cancelation.
+  std::stop_callback cb(co_await get_stop_token(),
+                        [&] { connections.cancel(); });
+
+  // Run untill get_connection coroutine is stoped.
+  while (connections) {
+
+    // Get a connection
+    auto fd = co_await connections;
+    if (fd <= 0) {
+      co_return;
+    }
+
+    // Handle the client in another coroutine asynchronously
+    handle_client(fd, io).schedule_on(co_await get_scheduler());
+  }
+  co_return;
+}
+```
 
 ## `schedule_on`
 

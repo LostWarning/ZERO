@@ -15,11 +15,7 @@ Coroutine are function that can suspend execution and can be resumed later. This
     * [`timer`](#timer)
     * [`cancel`](#cancel)
     * [`schedule_on`](#scheduleon)
-* IO Features
-    * [`Chain Request`](#chain-request)
-    * [`Batch Operation`](#batch-operation)
-    * [`Fixed Buffers`](#fixed-buffers)
-    * [`Provide Buffers`](#provide-buffers)
+    * [`events`](#event)
 
 * IO Operations
     * [`openat`](#openat)
@@ -40,6 +36,12 @@ Coroutine are function that can suspend execution and can be resumed later. This
     * [`delay`](#delay)
     * [`poll`](#poll)
     * [`nop`](#nop)
+
+* IO Features
+    * [`Chain Request`](#chain-request)
+    * [`Batch Operation`](#batch-operation)
+    * [`Fixed Buffers`](#fixed-buffers)
+    * [`Provide Buffers`](#provide-buffers)
 
 
 # Coroutine
@@ -150,6 +152,7 @@ async<int> print_file(io_service &io, int dir, const std::string filename) {
 }
 
 launch<int> coroutine_1(io_service &io, int dir) {
+  // Get the scheduler associated with this coroutine.
   auto scheduler       = co_await get_scheduler();
   auto print_file_task = print_file(io, dir, "log");
   co_return co_await print_file_task.schedule_on(scheduler);
@@ -233,6 +236,28 @@ async<> server(io *io) {
 ```
 
 ## `schedule_on`
+
+## `event`
+Event allow us to wait for an event to happen. `event` provide a counter each time `set` is called this counter is incremented by the given value and when the event is co_awaited this value is returned and couter reset to zero.
+
+```c++
+async<void> print_task(event &e) {
+  for (int i = 0; i < 10; ++i) {
+    sleep(1);
+    e.set(i);
+  }
+  co_return;
+}
+
+launch<int> launch_coroutine() {
+  event e;
+  print_task(e).schedule_on(co_await get_scheduler());
+  for (int i = 0; i < 10; ++i) {
+    std::cout << co_await e << std::endl;
+  }
+  co_return 0;
+}
+```
 
 # Scheduler
 ## `scheduler`

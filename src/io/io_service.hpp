@@ -66,7 +66,9 @@ public:
 
     m_io_queue->enqueue(std::forward<OP>(operation));
 
-    submit();
+    if (!(operation.m_sqe_flags & (IOSQE_IO_HARDLINK | IOSQE_IO_LINK))) {
+      submit();
+    }
 
     return future;
   }

@@ -10,7 +10,6 @@ atomic  = cmplr.find_library('atomic')
 atomic_dep = declare_dependency(link_args : ['-latomic'],
                            dependencies : [atomic])
 
-add_global_arguments('-march=native', language : 'cpp')
 # Project dependencies
 thread = dependency('threads')
 uring = dependency('liburing')
